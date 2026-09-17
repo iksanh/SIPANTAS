@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# Basis data dan data lapangan (berisi data pribadi, jangan dilacak)
+data/
+backup/
+*.db
+*.db.bak*
+*.sqlite
+*.sqlite3
+
+# Keluaran dan singgahan - selalu bisa dibuat ulang dari basis data
+keluaran/
+pratinjau/
+
+# Cadangan otomatis templat
+templates/cadangan/
+
+# Berkas sementara Microsoft Office
+~$*
+
+# Setelan editor dan sistem
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
