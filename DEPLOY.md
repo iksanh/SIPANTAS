@@ -1,31 +1,4 @@
-# DEPLOY — SIPANTAS (Sistem Panitia A Terpadu)
 
-Mengikuti pola `warkah.service` dan `wakaf.service` yang sudah jalan di produksi:
-Ubuntu Server, systemd, nginx sebagai reverse proxy, TLS lewat certbot, cadangan
-harian ke S3. Bisa dipasang di server yang sama dengan wakaf.
-
-## Bedanya dengan aplikasi wakaf
-
-Stack-nya tidak sama persis, jadi beberapa langkah disesuaikan:
-
-| | Wakaf | SIPANTAS | Akibatnya |
-|---|---|---|---|
-| Server aplikasi | uvicorn (ASGI), 2 worker | **waitress (WSGI), 1 proses 8 utas** | Jangan tambah proses — SQLite tidak suka ditulisi banyak proses. Kalau lambat, naikkan `--threads`. |
-| Porta | 8000 | **8002** | Supaya tidak bentrok. Cek dulu dengan `ss -ltnp`. |
-| Letak data | dari env (`DB_PATH`, `UPLOAD_DIR`) | **tetap di dalam folder aplikasi** (`data/`, `keluaran/`, `pratinjau/`) | Dipindah ke `/data/sipantas` lewat symlink. |
-| Kunci sesi | `SECRET_KEY` | **`KUNCI_RAHASIA`** | Sesi disimpan di tabel `sesi`, jadi restart tidak memutus login. |
-| Akun admin awal | `ADMIN_PASSWORD` dari env | **`admin` / `admin123` bawaan** | Wajib diganti segera setelah deploy. |
-| Migrasi skema | file `.sql` bernomor | **`db.siapkan()`** saat aplikasi mulai | Jalan sendiri, tidak ada langkah terpisah. |
-| Unggahan maksimum | 10 MB | **120 MB** | `client_max_body_size 120M` di nginx. |
-| Kebutuhan tambahan | — | **LibreOffice + huruf Bookman Old Style** | Untuk pratinjau PDF. Tanpa huruf yang sama, pergantian halaman bisa bergeser. |
-| Isi yang disunting di server | — | **`templates/*.docx`** (menu Template) | Template ikut dicadangkan, dan `git pull` dijaga lewat `deploy/perbarui.sh`. |
-
-Satu fitur hanya jalan di Windows: **kata penyambung** di kanan bawah halaman
-(perlu Microsoft Word untuk menghitung halaman). Di server langkah itu dilewati
-diam-diam, dan dokumennya tetap terbit. Kalau kata penyambung wajib ada, cetak
-dokumen akhirnya dari komputer kantor yang ada Word-nya, atau tambahkan secara manual.
-
----
 
 ## 1. Paket Sistem
 
