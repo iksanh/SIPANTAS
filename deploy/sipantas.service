@@ -1,0 +1,30 @@
+[Unit]
+Description=SIPANTAS - Sistem Panitia A Terpadu
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/srv/sipantas
+EnvironmentFile=/etc/sipantas.env
+# Satu proses, banyak utas: SQLite tidak suka ditulisi banyak proses sekaligus.
+# Kalau terasa lambat, naikkan --threads, jangan tambah proses.
+# Porta 8002 supaya tidak bentrok dengan wakaf (8000); cek dulu: ss -ltnp
+ExecStart=/srv/sipantas/venv/bin/waitress-serve \
+    --listen=127.0.0.1:8002 --threads=8 --ident=SIPANTAS \
+    --url-scheme=https \
+    wsgi:aplikasi
+Restart=always
+RestartSec=5
+
+# Pengetatan. ProtectHome=false karena LibreOffice menulis profilnya di
+# ~ubuntu/.config saat membuat pratinjau PDF.
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=false
+ReadWritePaths=/data /srv/sipantas
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,8 @@
+[Unit]
+Description=Cadangan SIPANTAS
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/sipantas.env
+ExecStart=/srv/sipantas/deploy/backup.sh
+User=ubuntu

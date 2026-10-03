@@ -1,0 +1,10 @@
+[Unit]
+Description=Jalankan cadangan SIPANTAS tiap hari pukul 02.30 WITA
+
+[Timer]
+# 02.30, bukan 02.00, supaya tidak berbarengan dengan cadangan wakaf.
+OnCalendar=*-*-* 02:30:00 Asia/Makassar
+Persistent=true
+
+[Install]
+WantedBy=timers.target

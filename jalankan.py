@@ -60,7 +60,7 @@ def main():
         threading.Timer(1.0, _buka, (port,)).start()
     try:
         serve(buat_aplikasi(), host=alamat, port=port, threads=UTAS,
-              ident="BerkasPanitiaA")
+              ident="SIPANTAS")
     except KeyboardInterrupt:
         print("\n  Berhenti.")
 

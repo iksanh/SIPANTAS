@@ -969,37 +969,9 @@ python3 -m pip install -r requirements.txt
 ./jalankan.sh 8000 0.0.0.0
 ```
 
-Layanan tetap (systemd), berjalan sebagai pengguna sendiri:
-
-```ini
-# /etc/systemd/system/panitia-a.service
-[Unit]
-Description=SIPANTAS
-After=network.target
-
-[Service]
-User=panitia
-WorkingDirectory=/opt/panitia-a/app
-Environment=ALAMAT=127.0.0.1 PORTA=8000 HTTPS=1
-Environment=KUNCI_RAHASIA=ganti-dengan-teks-acak-panjang
-ExecStart=/usr/bin/python3 jalankan.py
-Restart=on-failure
-
-[Install]
-WantedBy=multi-user.target
-```
-
-Lalu nginx di depannya untuk HTTPS (`proxy_pass http://127.0.0.1:8000;`). `ALAMAT`
-menentukan antarmuka yang didengarkan — biarkan `127.0.0.1` kalau ada nginx, isi
-`0.0.0.0` kalau langsung dipakai sejaringan. `HTTPS=1` menandai kuki sesi sebagai
-`Secure`; kuki sesinya sendiri sudah `HttpOnly` + `SameSite=Lax`, dan kata sandi
-disimpan sebagai PBKDF2-SHA256 200.000 putaran. `KUNCI_RAHASIA` diisi teks acak
-panjang dan tetap — kalau dibiarkan kosong, kunci dibuat baru tiap kali layanan
-dinyalakan ulang.
-
-Satu proses sudah cukup; yang dinaikkan kalau terasa lambat adalah jumlah utas
-(`UTAS=8`), bukan jumlah pekerja — SQLite tidak suka ditulisi banyak proses
-sekaligus.
+Untuk server produksi (systemd + nginx + HTTPS + cadangan harian ke S3, sepola
+dengan aplikasi warkah dan wakaf), ikuti **[DEPLOY.md](DEPLOY.md)**. Berkas
+konfigurasinya ada di folder `deploy/`.
 
 Yang perlu diketahui sebelum pindah:
 

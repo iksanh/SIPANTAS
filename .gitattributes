@@ -1,0 +1,3 @@
+# Berkas untuk server Linux harus berakhiran baris LF
+*.sh      text eol=lf
+deploy/** text eol=lf
