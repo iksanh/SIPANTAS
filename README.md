@@ -10,21 +10,6 @@ rapikan manual di tiap dokumen.
 
 ---
 
-## Menjalankan
-
-Klik dua kali **`jalankan.bat`**. Peramban terbuka sendiri di `http://localhost:8000`.
-
-Masuk pertama kali:
-
-| | |
-|---|---|
-| Nama pengguna | `admin` |
-| Kata sandi | `admin123` |
-
-Ganti kata sandi lewat menu **Pengaturan** setelah masuk.
-
-Untuk berhenti: tutup jendela hitamnya, atau tekan `Ctrl+C`.
-
 ## Isi halaman
 
 **Menu di sisi kiri**, tetap di tempatnya seperti KKP. Tombol `‹` di sebelah nama
