@@ -1,4 +1,6 @@
-# Berkas Panitia A
+# SIPANTAS
+
+**Sistem Panitia A Terpadu.**
 
 Aplikasi penerbitan **BAP, Risalah Panitia A, dan SK Penetapan Hak** untuk Kantor
 Pertanahan Kabupaten Bone Bolango. Satu berkas diinput sekali, tiga dokumen keluar.
@@ -972,7 +974,7 @@ Layanan tetap (systemd), berjalan sebagai pengguna sendiri:
 ```ini
 # /etc/systemd/system/panitia-a.service
 [Unit]
-Description=Berkas Panitia A
+Description=SIPANTAS
 After=network.target
 
 [Service]

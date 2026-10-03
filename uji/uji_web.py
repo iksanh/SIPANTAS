@@ -157,7 +157,7 @@ class Masuk(Dasar):
     def test_halaman_masuk_terbuka_tanpa_sesi(self):
         j = self.klien().get("/masuk")
         self.assertEqual(j.status_code, 200)
-        self.assertIn("Berkas Panitia A", j.get_data(as_text=True))
+        self.assertIn("SIPANTAS", j.get_data(as_text=True))
 
     def test_sandi_salah_401_dan_tanpa_kuki(self):
         j = self.klien().post("/masuk", data={"username": "admin", "sandi": "salah"})

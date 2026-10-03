@@ -1,4 +1,4 @@
-/* Berkas Panitia A - JavaScript sendiri, tanpa pustaka luar. */
+/* SIPANTAS - JavaScript sendiri, tanpa pustaka luar. */
 (function () {
   "use strict";
 

@@ -42,7 +42,7 @@ def main():
         print("  ! KUNCI_RAHASIA belum disetel - dibuatkan acak tiap kali mulai.")
 
     print(f"""
-  Berkas Panitia A
+  SIPANTAS
   ------------------------------------------------
   Alamat    : http://{"localhost" if sendiri else alamat}:{port}
   Basis data: {db.BERKAS_DB}

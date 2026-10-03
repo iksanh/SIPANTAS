@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Uji Berkas Panitia A
+title Uji SIPANTAS
 cd /d "%~dp0"
 
 rem Uji acuan: membandingkan hasil sekarang dengan rekaman di uji\emas\.

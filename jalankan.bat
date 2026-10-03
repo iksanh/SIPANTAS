@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-title Berkas Panitia A
+title SIPANTAS
 cd /d "%~dp0"
 
 where python >nul 2>nul

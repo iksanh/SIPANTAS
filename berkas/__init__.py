@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-"""Berkas Panitia A — penerbitan BAP, Risalah, dan SK Penetapan Hak.
+"""SIPANTAS (Sistem Panitia A Terpadu) — penerbitan BAP, Risalah, dan SK Penetapan Hak.
 
 Susunannya:
 

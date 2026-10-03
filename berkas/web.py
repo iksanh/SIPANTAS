@@ -221,8 +221,8 @@ def _menu_samping(pengguna, aktif):
     awal = e((pengguna["nama"] or "?").strip()[:1].upper())
     return f"""<aside class="samping" id="samping">
 <div class="samping-kepala">
-  <a class="merek" href="/berkas"><span class="tanda">A</span>
-    <span class="nama-panjang">Berkas Panitia A</span></a>
+  <a class="merek" href="/berkas"><span class="tanda">S</span>
+    <span class="nama-panjang">SIPANTAS</span></a>
   <button type="button" class="ikon-btn kuncup-btn" id="kuncup"
           aria-label="Kuncupkan menu" title="Kuncupkan menu">{ikon("kuncup")}</button>
 </div>
@@ -264,8 +264,8 @@ def layout(judul, isi, pengguna=None, aktif="", pesan=None, fokus=False):
   <header class="atas">
     <button type="button" class="ikon-btn" id="buka-nav"
             aria-label="Buka menu" aria-expanded="false">{ikon("menu")}</button>
-    <a class="merek" href="/berkas"><span class="tanda">A</span>
-      <span class="nama-panjang">Berkas Panitia A</span></a>
+    <a class="merek" href="/berkas"><span class="tanda">S</span>
+      <span class="nama-panjang">SIPANTAS</span></a>
   </header>
   <main>{blok_pesan}{isi}</main>
 </div>
@@ -275,7 +275,7 @@ def layout(judul, isi, pengguna=None, aktif="", pesan=None, fokus=False):
     return f"""<!doctype html>
 <html lang="id"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{e(judul)} · Berkas Panitia A</title>
+<title>{e(judul)} · SIPANTAS</title>
 <link rel="stylesheet" href="/static/style.css?v={CAP_CSS}">
 <script>/* dipasang sebelum halaman digambar supaya menu tak berkedip lebar
   dulu baru menguncup */
@@ -289,7 +289,7 @@ def layout(judul, isi, pengguna=None, aktif="", pesan=None, fokus=False):
 def halaman_masuk(galat=None):
     p = f'<div class="pesan galat">{e(galat)}</div>' if galat else ""
     isi = f"""<div class="masuk">
-  <div class="merek"><span class="tanda">A</span> Berkas Panitia A</div>
+  <div class="merek"><span class="tanda">S</span> SIPANTAS</div>
   <div class="kartu"><div class="badan">
     {p}
     <form method="post" action="/masuk" class="grid">
