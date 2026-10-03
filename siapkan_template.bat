@@ -2,6 +2,6 @@
 chcp 65001 >nul
 title Siapkan Template - Berkas Panitia A
 cd /d "%~dp0"
-python siapkan_template.py
+python -m berkas.perkakas.siapkan_template
 echo.
 pause

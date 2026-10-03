@@ -5,20 +5,16 @@
 set -e
 cd "$(dirname "$0")"
 
-python3 -c "import docx, openpyxl" 2>/dev/null || {
+python3 -c "import flask, waitress, docx, openpyxl, PIL" 2>/dev/null || {
   echo "  Memasang pustaka yang dibutuhkan..."
-  python3 -m pip install --quiet python-docx openpyxl
-}
-python3 -c "import PIL" 2>/dev/null || {
-  echo "  Memasang Pillow untuk merapikan foto lapangan..."
-  python3 -m pip install --quiet Pillow || true
+  python3 -m pip install --quiet -r requirements.txt
 }
 
 [ -f templates/sk.docx ] || {
   echo "  Template belum ada. Salin folder templates/ dari komputer lama,"
-  echo "  atau jalankan: python3 siapkan_template.py"
+  echo "  atau jalankan: python3 -m berkas.perkakas.siapkan_template"
 }
 
-[ -f data/berkas.db ] || python3 db.py
+[ -f data/berkas.db ] || python3 -m berkas.db
 
-exec python3 server.py "${1:-8000}" "${2:-127.0.0.1}"
+exec python3 jalankan.py "${1:-8000}" "${2:-127.0.0.1}"

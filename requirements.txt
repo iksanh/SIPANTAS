@@ -1,0 +1,37 @@
+# Kebutuhan paket. Pasang dengan:
+#
+#     python -m pip install -r requirements.txt
+#
+# Versinya dipatok supaya dokumen yang dihasilkan tidak berubah diam-diam
+# saat paketnya naik versi. Uji acuan di folder uji/ membandingkan hasil
+# dengan rekaman lama, jadi kenaikan versi yang mengubah keluaran akan
+# ketahuan - bukan ditemukan setelah dokumennya telanjur ditandatangani.
+
+# Perakit DOCX. Dipakai docxgen.py dan siapkan_template.py.
+python-docx==1.2.0
+
+# Pembaca XLSX. Dipakai impor_excel.py untuk memindahkan data lama.
+openpyxl==3.1.5
+
+# Opsional, tapi sangat dianjurkan.
+# foto.py tetap jalan tanpa Pillow, hanya saja format foto yang diterima
+# jadi terbatas dan orientasi EXIF dari kamera ponsel tidak diperbaiki.
+Pillow==12.2.0
+
+# Kerangka web: penjaluran, pembacaan formulir dan unggahan, serta kuki sesi.
+# Sesi, peran, dan token anti-CSRF diurus sendiri di berkas/ - semuanya
+# bersandar pada tabel `sesi`, bukan pada kuki bertanda tangan bawaan Flask,
+# supaya sesi bisa dicabut dari sisi server.
+Flask==3.1.2
+
+# Server WSGI untuk dipakai sungguhan - Windows maupun Linux. Server bawaan
+# Flask hanya untuk coba-coba dan tidak dipakai di sini, bahkan saat
+# mengembangkan, supaya yang diuji sama dengan yang dipasang.
+waitress==3.0.2
+
+# Penggerak PostgreSQL. Hanya perlu bila DB_URL menunjuk postgresql://;
+# tanpa paket ini aplikasi tetap jalan di atas SQLite.
+psycopg[binary]==3.2.3
+
+# Basis data bisa SQLite bawaan Python atau PostgreSQL, tanpa ORM. Perakit HTML juga masih
+# buatan sendiri di web.py. Uji acuan memakai unittest bawaan, tanpa pytest.

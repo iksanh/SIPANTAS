@@ -18,7 +18,7 @@
   --cincin:0 0 0 3px rgba(15,107,87,.22);
 
   --r:6px; --r-s:4px; --r-l:10px; --r-bulat:999px;
-  --atas-h:3.35rem;
+  --atas-h:0rem;      /* ada bilah atas hanya di layar sempit */
   --lebar:1220px;
 }
 :root[data-tema="gelap"],
@@ -57,7 +57,8 @@
 
 /* ================================================================ dasar */
 *{box-sizing:border-box}
-html{color-scheme:light dark; -webkit-text-size-adjust:100%}
+html{color-scheme:light dark; -webkit-text-size-adjust:100%;
+  scrollbar-gutter:stable}  /* isi tak bergeser saat tab pendek/panjang berganti */
 :root[data-tema="terang"]{color-scheme:light}
 :root[data-tema="gelap"]{color-scheme:dark}
 body{
@@ -85,17 +86,46 @@ code,.mono{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.85em}
 .ikon.besar{width:1.5em;height:1.5em}
 .ikon.raksasa{width:2.5rem;height:2.5rem;stroke-width:1.4}
 
-/* ================================================================ kepala */
-.atas{
-  background:var(--papan);
-  background:color-mix(in srgb, var(--papan) 86%, transparent);
-  backdrop-filter:saturate(1.4) blur(10px);
-  border-bottom:1px solid var(--garis);position:sticky;top:0;z-index:40;
-  transition:box-shadow .18s ease;
+/* ======================================================== menu samping */
+/* Menu tetap di kiri, seperti aplikasi KKP yang sudah biasa dipakai di
+   kantor. Lebarnya satu variabel supaya keadaan kuncup cukup menggantinya.
+   Kelas .menu-kuncup dipasang di <html> oleh skrip kecil di dalam <head>,
+   sebelum halaman digambar, supaya menunya tidak berkedip lebar dulu. */
+:root{ --samping-w:15rem; --samping-kuncup:3.6rem; }
+:root.menu-kuncup{ --samping-w:var(--samping-kuncup); }
+
+.kerangka{min-height:100vh}
+
+.samping{
+  position:fixed;left:0;top:0;bottom:0;width:var(--samping-w);z-index:50;
+  display:flex;flex-direction:column;background:var(--papan);
+  border-right:1px solid var(--garis);
+  transition:width .16s ease, transform .18s ease;
 }
-.atas.melayang{box-shadow:var(--bayang2)}
-.atas-isi{max-width:var(--lebar);margin:0 auto;padding:.5rem 1rem;
-  display:flex;align-items:center;gap:1rem;min-height:var(--atas-h)}
+.samping-kepala{display:flex;align-items:center;gap:.5rem;min-height:var(--atas-h);
+  padding:.5rem .6rem;border-bottom:1px solid var(--garis)}
+.samping-kepala .merek{min-width:0;overflow:hidden}
+.samping .kuncup-btn{margin-left:auto}
+.samping .kuncup-btn .ikon{transition:transform .16s ease}
+
+.samping-menu{display:flex;flex-direction:column;gap:.1rem;padding:.6rem .5rem;
+  overflow-y:auto;flex:1}
+.samping-kaki{border-top:1px solid var(--garis);padding:.5rem;display:grid;gap:.25rem}
+
+.samping-butir{display:flex;align-items:center;gap:.65rem;padding:.5rem .6rem;
+  border-radius:var(--r);text-decoration:none;color:var(--tinta2);
+  font-size:.885rem;font-weight:500;white-space:nowrap;
+  transition:background .12s,color .12s}
+.samping-butir:hover{background:var(--papan2);color:var(--tinta)}
+/* Ikon memakai tinta yang lebih redup, bukan opacity, supaya garisnya tetap
+   tegas; saat disorot atau aktif ia ikut warna tulisan. */
+.samping-butir .ikon{width:1.2rem;height:1.2rem;stroke-width:1.75;color:var(--tinta3);
+  transition:color .12s}
+.samping-butir:hover .ikon{color:currentColor}
+.samping-butir.aktif{background:var(--aksen-lembut);color:var(--aksen);font-weight:650;
+  box-shadow:inset 0 0 0 1px var(--aksen-garis)}
+.samping-butir.aktif .ikon{color:currentColor;stroke-width:2}
+
 .merek{display:flex;align-items:center;gap:.55rem;font-weight:700;letter-spacing:-.02em;
   text-decoration:none;color:var(--tinta);white-space:nowrap}
 .merek:hover{color:var(--tinta)}
@@ -103,33 +133,43 @@ code,.mono{font-family:Consolas,"SF Mono",Menlo,monospace;font-size:.85em}
   background:linear-gradient(160deg,var(--aksen),var(--aksen-tua));color:#fff;
   display:grid;place-items:center;font-size:.85rem;font-weight:800;
   box-shadow:0 1px 2px rgba(0,0,0,.18)}
-.merek .nama-panjang{display:inline}
+.merek .nama-panjang{display:inline;overflow:hidden;text-overflow:ellipsis}
 
-.atas nav{display:flex;gap:.15rem;margin-left:auto;align-items:center}
-.atas nav a{display:inline-flex;align-items:center;gap:.4rem;
-  padding:.4rem .7rem;border-radius:var(--r);text-decoration:none;color:var(--tinta2);
-  font-size:.885rem;font-weight:500;white-space:nowrap;transition:background .12s,color .12s}
-.atas nav a:hover{background:var(--papan2);color:var(--tinta)}
-.atas nav a.aktif{background:var(--aksen-lembut);color:var(--aksen);font-weight:650;
-  box-shadow:inset 0 0 0 1px var(--aksen-garis)}
-.atas nav a.aktif .ikon{opacity:1}
-.atas nav a .ikon{opacity:.8}
+.siapa{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;
+  font-size:.82rem;color:var(--tinta2);min-width:0}
+.siapa .awal{width:1.7rem;height:1.7rem;border-radius:50%;flex:none;background:var(--papan3);
+  color:var(--tinta2);display:grid;place-items:center;font-size:.72rem;font-weight:700}
+.siapa-teks{min-width:0;display:grid;line-height:1.25}
+.siapa-teks b{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--tinta)}
+.siapa-teks .cap{justify-self:start;margin-top:.1rem}
 
-.alat-atas{display:flex;align-items:center;gap:.35rem;margin-left:.35rem;
-  padding-left:.6rem;border-left:1px solid var(--garis)}
-.siapa{display:inline-flex;align-items:center;gap:.4rem;font-size:.82rem;color:var(--tinta2);
-  max-width:11rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.siapa .awal{width:1.5rem;height:1.5rem;border-radius:50%;flex:none;background:var(--papan3);
-  color:var(--tinta2);display:grid;place-items:center;font-size:.7rem;font-weight:700}
 .ikon-btn{display:inline-grid;place-items:center;width:2rem;height:2rem;flex:none;
   border:1px solid transparent;border-radius:var(--r);background:none;color:var(--tinta2);
   cursor:pointer;padding:0;text-decoration:none;transition:background .12s,color .12s}
 .ikon-btn:hover{background:var(--papan2);color:var(--tinta)}
 .ikon-btn .ikon{width:1.05rem;height:1.05rem}
-.buka-nav{display:none}
+
+/* ---- keadaan kuncup: tinggal ikon, tulisannya jadi tooltip bawaan ---- */
+:root.menu-kuncup .samping .nama-panjang,
+:root.menu-kuncup .samping-butir>span,
+:root.menu-kuncup .siapa-teks{display:none}
+:root.menu-kuncup .samping-butir{justify-content:center;padding-inline:0;min-height:2.75rem}
+:root.menu-kuncup .samping-kepala{flex-direction:column;gap:.35rem;padding-block:.55rem}
+:root.menu-kuncup .samping .kuncup-btn{margin-left:0}
+:root.menu-kuncup .samping .kuncup-btn .ikon{transform:rotate(180deg)}
+:root.menu-kuncup .siapa{justify-content:center;padding-inline:0}
+
+/* ---- wadah isi, digeser sejauh lebar menu ---- */
+.wadah{margin-left:var(--samping-w);transition:margin-left .16s ease;min-width:0}
+
+/* Bilah atas hanya untuk layar sempit; di layar lebar menunya sudah tetap. */
+.atas{display:none}
+.tabir{display:none}
 
 /* ================================================================ badan */
-main{max-width:var(--lebar);margin:0 auto;padding:1.35rem 1rem 5rem}
+main{max-width:var(--lebar);margin:0 auto;padding:1.35rem 1.35rem 5rem}
+
+
 
 .judul{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;margin-bottom:1.1rem}
 .judul>div:first-child{min-width:0}
@@ -155,7 +195,8 @@ main{max-width:var(--lebar);margin:0 auto;padding:1.35rem 1rem 5rem}
 
 /* ---------------------------------------------------------------- kartu */
 .kartu{background:var(--papan);border:1px solid var(--garis);border-radius:var(--r-l);
-  box-shadow:var(--bayang1);margin-bottom:1rem;overflow:hidden}
+  box-shadow:var(--bayang1);margin-bottom:1rem;overflow:hidden;
+  overflow:clip}  /* clip, bukan hidden: bilah lengket di dalam kartu tetap menempel */
 .kartu>h2{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;
   padding:.7rem 1rem;border-bottom:1px solid var(--garis);font-size:.95rem;
   background:linear-gradient(var(--papan2),var(--papan2)) padding-box}
@@ -221,6 +262,11 @@ fieldset{border:0;padding:0;margin:0}
   box-shadow:0 1px 2px rgba(15,107,87,.3)}
 .btn.utama:hover{background:var(--aksen-tua);border-color:var(--aksen-tua);color:#fff}
 .btn.utama .ikon{opacity:1}
+/* petunjuk pintasan papan ketik di dalam tombol (Simpan  Ctrl S) */
+.btn kbd.pintas{font:600 .68rem/1 Consolas,"SF Mono",Menlo,monospace;padding:.18rem .32rem;
+  border-radius:var(--r-s);border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);
+  opacity:.85;letter-spacing:.02em}
+@media (hover:none),(max-width:680px){.btn kbd.pintas{display:none}}
 .btn.bahaya{color:var(--galat);border-color:var(--galat-garis);background:var(--papan)}
 .btn.bahaya:hover{background:var(--galat-lembut);border-color:var(--galat);color:var(--galat)}
 .btn.hantu{border-color:transparent;background:none;box-shadow:none;color:var(--tinta2)}
@@ -346,8 +392,22 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
   padding:.6rem;border:1px solid var(--garis);border-radius:var(--r);background:var(--papan2);
   animation:masuk-halus .18s ease}
 .baris:hover{border-color:var(--garis2)}
-.baris .no{font:700 .75rem/1 Consolas,monospace;color:var(--tinta3);padding-top:.7rem;
-  text-align:center}
+.baris .no{font:700 .75rem/1 Consolas,monospace;color:var(--tinta3);padding-top:.35rem;
+  display:flex;flex-direction:column;align-items:center;gap:.3rem}
+/* Pegangan seret: tetikus, sentuh, dan papan ketik (↑ ↓ saat terfokus). */
+.baris .pegang{display:grid;place-items:center;width:1.6rem;height:1.9rem;padding:0;border:0;
+  border-radius:var(--r-s);background:none;color:var(--tinta3);cursor:grab;touch-action:none;
+  transition:background .12s ease,color .12s ease}
+.baris .pegang .ikon{width:1.15rem;height:1.15rem;stroke-width:2.6}
+.baris:hover .pegang,.baris .pegang:focus-visible{color:var(--aksen)}
+.baris .pegang:hover{background:var(--papan3)}
+.baris .pegang:focus-visible{outline:none;box-shadow:var(--cincin)}
+.baris-dinamis.menyeret,.baris-dinamis.menyeret *{cursor:grabbing!important;user-select:none}
+.baris.diseret{position:relative;z-index:5;border-color:var(--aksen-garis);background:var(--papan);
+  box-shadow:var(--bayang3);transition:box-shadow .15s ease;animation:none}
+.baris.diseret .pegang{color:var(--aksen);background:var(--aksen-lembut)}
+.baris.mendarat{transition:transform .18s ease}
+.baris.dipindah{animation:sorot 1.2s ease-out}
 .baris .isi{display:grid;gap:.45rem;min-width:0}
 .baris .alat{display:flex;flex-direction:column;gap:.25rem}
 .baris .alat .btn{padding:.25rem;width:1.85rem;height:1.6rem}
@@ -400,6 +460,44 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
 .bar{display:flex;gap:.6rem;flex-wrap:wrap;align-items:end;margin-bottom:.9rem}
 .bar .tumbuh{flex:1;min-width:13rem}
 
+/* ------------------------------------------------ saringan daftar berkas */
+.saringan{background:var(--papan);border:1px solid var(--garis);border-radius:var(--r-l);
+  box-shadow:var(--bayang1);padding:.85rem .95rem;margin-bottom:.75rem;display:grid;gap:.75rem;
+  transition:opacity .15s}
+.saringan.memuat{opacity:.6;pointer-events:none}
+.cari-kotak{display:flex;gap:.45rem}
+.cari-kotak input{flex:1;min-width:0}
+.saringan-pilih{display:grid;grid-template-columns:repeat(auto-fit,minmax(11rem,1fr));gap:.6rem}
+.saringan-pilih select{width:100%}
+.saringan-aktif{display:flex;flex-wrap:wrap;align-items:center;gap:.4rem;margin-bottom:.75rem}
+.saringan-aktif .petunjuk{margin:0}
+.saring-cap{display:inline-flex;align-items:center;gap:.35rem;padding:.2rem .3rem .2rem .65rem;
+  border-radius:var(--r-bulat);font-size:.8rem;color:var(--aksen);background:var(--aksen-lembut);
+  border:1px solid var(--aksen-garis);text-decoration:none;transition:background .12s,border-color .12s}
+.saring-cap:hover{border-color:var(--aksen);text-decoration:none}
+.saring-x{display:inline-grid;place-items:center;width:1.15rem;height:1.15rem;border-radius:50%;
+  font-size:.9rem;line-height:1}
+.saring-cap:hover .saring-x{background:var(--aksen);color:#fff}
+
+/* paging di kaki tabel */
+.halaman{display:flex;flex-wrap:wrap;align-items:center;gap:.6rem 1rem;padding:.7rem 1rem;
+  border-top:1px solid var(--garis);font-size:.83rem;color:var(--tinta2)}
+.halaman-info{margin:0;font-variant-numeric:tabular-nums}
+.halaman-info b{color:var(--tinta)}
+.halaman-nomor{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem;margin-left:auto}
+.halaman-no{min-width:2rem;font-variant-numeric:tabular-nums}
+.halaman-no.aktif{background:var(--aksen);border-color:var(--aksen);color:#fff;cursor:default}
+.halaman-elipsis{padding:0 .2rem;color:var(--tinta3)}
+.halaman .btn[aria-disabled="true"]{pointer-events:none}
+.halaman-per{display:flex;align-items:center;gap:.4rem;margin:0;font-size:.83rem;
+  font-weight:400;color:var(--tinta2);white-space:nowrap}
+.halaman-per select{width:auto;padding-block:.25rem;font-size:.83rem}
+@media (max-width:680px){
+  .halaman{justify-content:center;text-align:center}
+  .halaman-nomor{margin-left:0;justify-content:center;width:100%;order:-1}
+  .halaman-nomor .btn[rel],.halaman-nomor span.btn:not(.halaman-no){flex:1}
+}
+
 /* --------------------------------------------------------- pratinjau PDF */
 .pratinjau-bingkai{position:relative;background:var(--cekung);
   height:calc(100vh - 15rem);min-height:26rem}
@@ -428,9 +526,6 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
 .rincian .sub-label{display:block;margin-top:.6rem}
 
 /* ------------------------------------------------------ susunan panitia */
-.pemisah{display:flex;align-items:center;gap:.5rem;font-size:1.08rem;font-weight:700;
-  letter-spacing:-.015em;margin:1.8rem 0 .6rem}
-.pemisah .ikon{color:var(--tinta3)}
 .sub{display:flex;align-items:center;gap:.4rem;font-size:.755rem;font-weight:700;
   text-transform:uppercase;letter-spacing:.07em;color:var(--tinta3);margin:1.1rem 0 .5rem}
 .sub::after{content:"";flex:1;height:1px;background:var(--garis)}
@@ -510,26 +605,102 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
 .tak-cocok{padding:1.8rem 1rem;text-align:center;color:var(--tinta3);font-size:.85rem}
 .simpan-baris{display:flex;gap:.3rem}
 
+/* ------------------------------------------------------ data referensi */
+/* kalimat pembuka tiap tab: cukup besar untuk dibaca, tidak selebar layar */
+.pengantar{font-size:.85rem;color:var(--tinta2);line-height:1.55;max-width:78ch;
+  margin:0 0 .9rem}
+/* kartu tetap: kepala seperti kartu lipat, tapi tanpa panah dan tak bisa ditutup */
+.kartu>h2 .lipat-teks{font-size:inherit}
+.kartu>h2 .lipat-ringkas code{font-size:.95em}
+
+/* baris tabel yang berisi isian: sel lain ikut rata tengah dengan kotaknya */
+table.tabel-isian td{vertical-align:middle}
+td.redup{color:var(--tinta3);font-size:.82rem}
+.tabel-ref td{vertical-align:top}
+.tabel-ref .cap.kode{font-family:Consolas,"SF Mono",Menlo,monospace;font-weight:600}
+.tabel-ref .chip{gap:.25rem}
+.tabel-ref .chip .cap{font-family:inherit;font-weight:600;border-radius:var(--r-bulat)}
+.petunjuk.semua{margin:0;font-style:italic}
+
+/* isi klausa: {{isian}} ditandai, yang panjang dipotong tiga baris */
+.klausa-isi{line-height:1.55;max-width:70ch}
+.klausa-isi.potong{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
+  overflow:hidden}
+.klausa-isi.bentang{display:block}
+.klausa-isi code.isian{font-size:.78em;padding:.02rem .3rem;border-radius:var(--r-s);
+  background:var(--aksen-lembut);color:var(--aksen);border:1px solid var(--aksen-garis);
+  white-space:nowrap}
+.klausa-isi+.btn{margin:.2rem 0 0 -.5rem;padding-inline:.5rem}
+
+/* saringan keadaan di dalam kartu lipat (desa) */
+.tapis-lipat{display:flex;flex-wrap:wrap;gap:.3rem;padding:.55rem 1rem;
+  border-bottom:1px solid var(--garis);background:var(--papan)}
+.tapis-lipat button{display:inline-flex;align-items:center;gap:.4rem;font:inherit;
+  font-size:.8rem;font-weight:600;padding:.25rem .5rem .25rem .7rem;cursor:pointer;
+  border:1px solid var(--garis);border-radius:var(--r-bulat);background:var(--papan);
+  color:var(--tinta2);transition:background .12s,border-color .12s,color .12s}
+.tapis-lipat button:hover{background:var(--papan2);border-color:var(--tinta3);color:var(--tinta)}
+.tapis-lipat button.aktif{background:var(--aksen-lembut);border-color:var(--aksen-garis);
+  color:var(--aksen)}
+
+/* kartu "tambah": tindakan, bukan data — garis putus-putus, tanpa isian abu */
+.lipat.tambah{border-style:dashed;border-color:var(--garis2);box-shadow:none;
+  background:transparent}
+.lipat.tambah .lipat-kepala{background:transparent}
+.lipat.tambah .lipat-kepala:hover{background:var(--aksen-lembut)}
+.lipat.tambah .lipat-judul{color:var(--aksen)}
+.lipat.tambah.terbuka{border-style:solid;background:var(--papan)}
+
+/* formulir SK dan anggota panitia: kolom menurut panjang isiannya */
+.g-sk{grid-template-columns:minmax(14rem,2fr) repeat(3,minmax(9.5rem,1fr))}
+.g-sk>div:last-child{grid-column:1/-1}
+.g-anggota{grid-template-columns:4.5rem minmax(12rem,2fr) minmax(10rem,1.3fr)
+  minmax(12rem,2fr) minmax(12rem,1.6fr)}
+
+/* tombol simpan formulir panjang tetap terjangkau saat digulung */
+.aksi-baris.lengket-bawah{position:sticky;bottom:0;z-index:5;margin:0 -1rem -1rem;
+  padding:.65rem 1rem;background:var(--papan);border-top:1px solid var(--garis);
+  box-shadow:0 -8px 16px -12px rgba(0,0,0,.25)}
+
+@media (max-width:1100px){
+  .g-anggota{grid-template-columns:4.5rem repeat(auto-fit,minmax(11rem,1fr))}
+}
+@media (max-width:700px){
+  .g-sk,.g-anggota{grid-template-columns:1fr 1fr}
+  .g-sk>div:first-child,.g-anggota>div:nth-child(2){grid-column:1/-1}
+}
+
 /* ================================================================ layar kecil */
+/* ---- layar sempit: menu jadi laci yang digeser keluar ----
+   Di bawah 900px menu tetap akan memakan terlalu banyak lebar, jadi ia
+   disembunyikan ke kiri dan dipanggil lewat tombol di bilah atas. Keadaan
+   kuncup sengaja diabaikan di sini: lacinya selalu lebar penuh supaya
+   tulisannya terbaca. */
 @media (max-width:900px){
-  .merek .nama-panjang{display:none}
-  .atas nav a span.teks{display:none}
-  .atas nav a{padding:.45rem .55rem}
-  .siapa .nama{display:none}
+  :root{ --atas-h:3.35rem; --samping-w:15rem; }
+  .samping{transform:translateX(-100%);box-shadow:var(--bayang3)}
+  :root.menu-buka .samping{transform:none}
+  :root.menu-kuncup .samping .nama-panjang,
+  :root.menu-kuncup .samping-butir>span,
+  :root.menu-kuncup .siapa-teks{display:revert}
+  :root.menu-kuncup .samping-butir{justify-content:flex-start;padding-inline:.6rem}
+  :root.menu-kuncup .samping-kepala{flex-direction:row;gap:.5rem}
+  :root.menu-kuncup .siapa{justify-content:flex-start;padding-inline:.6rem}
+  .samping .kuncup-btn{display:none}
+  .wadah{margin-left:0}
+  .atas{display:flex;align-items:center;gap:.6rem;padding:.45rem .75rem;
+    min-height:var(--atas-h);position:sticky;top:0;z-index:40;
+    background:var(--papan);border-bottom:1px solid var(--garis)}
+  .atas.melayang{box-shadow:var(--bayang2)}
+  .tabir{display:block;position:fixed;inset:0;z-index:45;
+    background:rgba(15,20,24,.38);opacity:0;pointer-events:none;
+    transition:opacity .18s ease}
+  .tabir[hidden]{display:block}
+  :root.menu-buka .tabir{opacity:1;pointer-events:auto}
 }
 @media (max-width:680px){
   main{padding:1rem .75rem 4rem}
   h1{font-size:1.25rem}
-  .atas-isi{padding:.45rem .75rem;gap:.5rem}
-  .atas nav{position:fixed;inset:var(--atas-h) 0 auto 0;background:var(--papan);
-    border-bottom:1px solid var(--garis);box-shadow:var(--bayang2);
-    flex-direction:column;align-items:stretch;gap:.1rem;padding:.5rem;margin:0;
-    display:none;z-index:39}
-  .atas nav.buka{display:flex}
-  .atas nav a{padding:.6rem .7rem;font-size:.95rem}
-  .atas nav a span.teks{display:inline}
-  .alat-atas{margin-left:auto;border-left:0;padding-left:0}
-  .buka-nav{display:inline-grid}
   .judul.lengket{margin:-1rem -.75rem 1rem;padding:.6rem .75rem}
   .lengket-atas{position:static;margin:-1rem -.75rem 1rem;padding:.6rem .75rem 0}
   .judul .aksi{margin-left:0;width:100%}
@@ -558,7 +729,8 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
   .putar{border-top-color:var(--garis2)}
 }
 @media print{
-  .atas,.tab,.judul .aksi,.bar,.btn,form.aksi-baris{display:none!important}
+  .samping,.atas,.tabir,.tab,.judul .aksi,.bar,.btn,form.aksi-baris{display:none!important}
+  .wadah{margin-left:0}
   .lengket-atas{position:static;margin:0;padding:0;background:none}
   body{background:#fff}
   main{max-width:none;padding:0}
@@ -566,4 +738,317 @@ tr.tak-ada td{text-align:center;color:var(--tinta3);padding:2rem 1rem}
   .panel{display:block!important}
   .lipat-kepala{background:none}
   .lipat-isyarat,.lipat-panah{display:none}
+}
+
+/* ---------- mode baca-saja (petugas) ----------
+   <fieldset disabled> dipakai supaya peramban mematikan semua isian di
+   dalamnya sekaligus; gayanya sendiri dinetralkan agar tak terlihat sebagai
+   kotak. Tombol dan isian yang mati diredupkan supaya jelas kenapa tak bisa
+   diklik. Penjaga sebenarnya ada di sisi server, ini cuma penjelasnya. */
+fieldset.baca-saja{border:0;padding:0;margin:0;min-width:0}
+fieldset.baca-saja .btn,
+fieldset.baca-saja button{opacity:.45;cursor:not-allowed}
+/* tautan tetap hidup di dalam fieldset mati — jangan digambar seolah mati */
+fieldset.baca-saja a.btn{opacity:1;cursor:pointer}
+fieldset.baca-saja input,
+fieldset.baca-saja select,
+fieldset.baca-saja textarea{background:var(--lembut,#f6f7f9);cursor:default}
+
+/* Lencana peran di bilah atas menempel pada nama pengguna. */
+.siapa .cap{margin-left:.4rem;vertical-align:middle}
+
+.g5{grid-template-columns:repeat(auto-fit,minmax(8rem,1fr))}
+
+/* ---------- langkah pengisian berkas baru ----------
+   Bilah ini tombol tab yang sama, hanya digambar sebagai deretan langkah
+   bernomor. Yang sudah dilewati ditandai supaya jelas sudah sampai mana. */
+.tab.tahap{gap:.15rem;padding-bottom:.15rem}
+.tab.tahap button{flex-direction:row;gap:.5rem;padding:.6rem .7rem;
+  border-bottom-width:2px;color:var(--tinta3)}
+.tab.tahap button .tahap-no{display:grid;place-items:center;flex:none;
+  width:1.5rem;height:1.5rem;border-radius:50%;font-size:.75rem;font-weight:700;
+  background:var(--papan3);color:var(--tinta2);transition:background .12s,color .12s}
+.tab.tahap button .tahap-teks{display:flex;align-items:center;gap:.4rem}
+.tab.tahap button.aktif .tahap-no{background:var(--aksen);color:#fff}
+.tab.tahap button.lewat{color:var(--tinta2)}
+.tab.tahap button.lewat .tahap-no{background:var(--baik-lembut);color:var(--baik)}
+/* Angka diganti centang begitu langkahnya terlewati. */
+.tab.tahap button.lewat .tahap-no{font-size:0}
+.tab.tahap button.lewat .tahap-no::after{content:"\2713";font-size:.8rem}
+.tab.tahap button .cap{font-weight:500}
+
+.tahap-petunjuk{margin:0 0 .9rem;padding:.65rem .8rem;border-radius:var(--r);
+  background:var(--aksen-lembut);color:var(--tinta2);font-size:.85rem;line-height:1.5;
+  box-shadow:inset 0 0 0 1px var(--aksen-garis)}
+.tahap-petunjuk b{color:var(--aksen)}
+
+.tahap-kaki{display:flex;align-items:center;gap:.5rem;margin-top:1.1rem;
+  padding-top:.9rem;border-top:1px solid var(--garis)}
+.tahap-kaki .tahap-isi{flex:1}
+.btn.sunyi{background:none;border-color:transparent;color:var(--tinta3);box-shadow:none}
+.btn.sunyi:hover{background:var(--papan2);color:var(--tinta)}
+
+@media (max-width:680px){
+  .tab.tahap button .tahap-teks{display:none}
+  .tab.tahap button.aktif .tahap-teks{display:flex}
+  .tahap-kaki{flex-wrap:wrap}
+}
+
+/* ------------------------------------------------ daftar kelengkapan loket
+   Bentuknya mengikuti formulir Lampiran Permen: kolom kiri bunyi butirnya,
+   kolom kanan Ada / Tidak Ada. Indentasi dibawa kelas .dalam-N, bukan spasi
+   di depan teks, supaya bunyi butirnya tetap bisa disalin apa adanya. */
+.periksa{border:1px solid var(--garis);border-radius:var(--r);overflow:hidden}
+.periksa-kepala,.periksa-baris{display:grid;grid-template-columns:1fr 17rem;
+  gap:.75rem;align-items:start;padding:.5rem .7rem;border-bottom:1px solid var(--garis)}
+.periksa-baris:last-child{border-bottom:0}
+.periksa-kepala{background:var(--papan3);font-weight:700;font-size:.78rem;
+  text-transform:uppercase;letter-spacing:.03em;color:var(--tinta2)}
+.periksa-kepala .periksa-pilih{justify-content:flex-start}
+.periksa-kepala .periksa-teks{display:block;padding-left:2.4rem}
+.periksa-baris:nth-child(even){background:var(--papan2)}
+.periksa-baris:hover{background:var(--aksen-lembut)}
+
+.periksa-teks{display:grid;grid-template-columns:2rem 1fr;gap:.4rem;min-width:0}
+.periksa-no{font:700 .8rem/1.5 Consolas,monospace;color:var(--tinta3);text-align:right}
+.periksa-nama{font-size:.85rem;line-height:1.5;min-width:0}
+.periksa-dasar{display:block;font-size:.72rem;color:var(--tinta3);margin-top:.15rem}
+.periksa-isian{display:block;width:100%;margin-top:.35rem}
+.dalam-1 .periksa-teks{padding-left:1.1rem}
+.dalam-2 .periksa-teks{padding-left:2.2rem}
+.dalam-3 .periksa-teks{padding-left:3.3rem}
+
+/* Sub-judul tebal di dalam formulir aslinya — bukan butir yang dicentang. */
+.periksa-baris.judul .periksa-nama{font-weight:700}
+/* .judul juga nama bilah judul halaman; jangan warisi jarak bawahnya. */
+.periksa-baris.judul,.periksa-baris .periksa-pilih{margin:0}
+.periksa-baris.kurang{box-shadow:inset 3px 0 0 var(--galat)}
+.periksa-baris.koreksi{box-shadow:inset 3px 0 0 var(--ingat)}
+/* Catatan koreksi selebar baris, di bawah bunyi butir dan pilihannya. Baru
+   tampil saat "Perlu koreksi" (nilai 3) dipilih — tanpa JavaScript. */
+.periksa-koreksi{grid-column:1/-1;display:none;padding-left:2.4rem}
+.periksa-koreksi label{font-size:.75rem;color:var(--ingat);margin-bottom:.15rem}
+.periksa-koreksi input{width:100%}
+.periksa-baris:has(input[type=radio][value="3"]:checked) .periksa-koreksi{display:block}
+/* Butir yang tidak berlaku tetap tampil, hanya diredupkan: petugas perlu
+   melihat bahwa butir itu memang sengaja dilewati, bukan hilang. */
+.periksa-baris.lewat{opacity:.5}
+.periksa-baris.lewat:hover{background:var(--papan2)}
+
+.periksa-pilih{display:flex;gap:.9rem;align-items:center;flex-wrap:wrap;
+  font-size:.8rem;padding-top:.1rem}
+.periksa-pilih label{display:inline-flex;align-items:center;gap:.3rem;margin:0;
+  font-weight:500;white-space:nowrap;cursor:pointer}
+.periksa-pilih input[type=radio]{margin:0;cursor:pointer}
+.periksa-pilih.ringkas{display:grid;gap:.2rem;justify-items:start}
+.periksa-pilih.ringkas .petunjuk{margin:0}
+
+/* Pilihan bersegmen: tiga tombol besar, bukan tiga bulatan radio kecil.
+   Radionya tetap ada (disembunyikan secara visual) supaya formulir, panah
+   kiri/kanan, dan pembaca layar bekerja seperti biasa. Warna mengikuti
+   artinya: hijau ada, kuning koreksi, merah tidak ada. */
+.periksa-pilih.segmen{display:inline-flex;gap:0;flex-wrap:nowrap;padding:0;
+  border:1px solid var(--garis2);border-radius:var(--r);overflow:hidden;
+  background:var(--papan);justify-self:start;align-self:start}
+.periksa-pilih.segmen .pil{position:relative;padding:.34rem .6rem;gap:.35rem;
+  font-size:.78rem;color:var(--tinta2);border-left:1px solid var(--garis);
+  transition:background .12s,color .12s}
+.periksa-pilih.segmen .pil:first-child{border-left:0}
+.periksa-pilih.segmen .pil:hover{background:var(--papan2);color:var(--tinta)}
+.periksa-pilih.segmen input{position:absolute;opacity:0;width:1px;height:1px;pointer-events:none}
+.periksa-pilih.segmen kbd{font:600 .62rem/1 Consolas,monospace;padding:.12rem .25rem;
+  border:1px solid var(--garis2);border-radius:3px;color:var(--tinta3);display:none}
+.periksa.pintas-tampil .periksa-pilih.segmen kbd{display:inline-block}
+.periksa-pilih.segmen .pil:has(input:focus-visible){box-shadow:inset 0 0 0 2px var(--aksen);z-index:1}
+.periksa-pilih.segmen .pil-ada:has(input:checked){background:var(--baik-lembut);color:var(--baik);font-weight:700}
+.periksa-pilih.segmen .pil-koreksi:has(input:checked){background:var(--ingat-lembut);color:var(--ingat);font-weight:700}
+.periksa-pilih.segmen .pil-tidak:has(input:checked){background:var(--galat-lembut);color:var(--galat);font-weight:700}
+.periksa-pilih.segmen .pil:has(input:checked) kbd{border-color:currentColor;color:inherit}
+.periksa-pilih.segmen .pil:has(input:disabled){cursor:default}
+.periksa-pilih.segmen .pil:has(input:disabled):hover{background:none}
+
+/* Belum diperiksa: bukan merah — belum tentu kurang, hanya belum disentuh.
+   Garis putus-putus di tepi kiri dan segmen yang bergaris lebih tegas. */
+.periksa-baris.belum{box-shadow:inset 3px 0 0 var(--garis2)}
+.periksa-baris.belum .periksa-pilih.segmen{border-style:dashed;border-color:var(--tinta3)}
+.periksa-baris.sorot{animation:sorot 1.2s ease-out}
+@keyframes sorot{from{background:var(--aksen-lembut);box-shadow:inset 3px 0 0 var(--aksen)}}
+.periksa-baris[hidden]{display:none}
+
+/* Bilah kemajuan dan alat saring di atas daftar */
+.periksa-progres{margin:.2rem 0 .9rem}
+.periksa-progres-teks{display:flex;justify-content:space-between;gap:.5rem;
+  font-size:.83rem;color:var(--tinta2);margin-bottom:.35rem}
+.periksa-progres-teks b{color:var(--tinta)}
+.progres{height:.45rem;border-radius:var(--r-bulat);background:var(--papan3);overflow:hidden}
+.progres>span{display:block;height:100%;border-radius:inherit;background:var(--aksen);
+  transition:width .25s ease}
+.periksa-progres.penuh .progres>span{background:var(--baik)}
+
+.periksa-alat{display:flex;align-items:center;gap:.5rem;flex-wrap:wrap;margin:0 0 .75rem}
+.periksa-alat>.btn:last-child:not(:first-child){margin-left:auto}
+.periksa-alat [data-ke-belum]{margin-left:auto}
+.periksa-alat [data-ke-belum]+.btn{margin-left:0}
+.periksa-tapis{display:inline-flex;gap:.3rem;flex-wrap:wrap}
+.periksa-tapis button{display:inline-flex;align-items:center;gap:.35rem;cursor:pointer;
+  padding:.28rem .55rem .28rem .7rem;font:inherit;font-size:.8rem;color:var(--tinta2);
+  background:var(--papan);border:1px solid var(--garis2);border-radius:var(--r-bulat)}
+.periksa-tapis button:hover{background:var(--papan2);color:var(--tinta)}
+.periksa-tapis button.aktif{background:var(--aksen-lembut);border-color:var(--aksen-garis);
+  color:var(--aksen);font-weight:600}
+.periksa-kosong{border:1px dashed var(--garis2);border-radius:var(--r);margin-top:.6rem}
+[data-periksa-ringkas] a{color:inherit;text-decoration:underline;text-underline-offset:2px}
+[data-periksa-ringkas] .pesan{display:block}
+
+/* ------------------------------------------ periksa kelengkapan layar penuh
+   Tanpa menu samping. Daftar di kiri; hasil pemeriksaan menempel di kanan
+   supaya kekurangannya selalu kelihatan selagi daftar digulung. */
+main.fokus{max-width:1560px;padding-top:0}
+.fokus-atas{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:.9rem;
+  flex-wrap:wrap;margin:0 -1.35rem 1rem;padding:.75rem 1.35rem;
+  background:color-mix(in srgb, var(--kertas) 94%, transparent);
+  backdrop-filter:saturate(1.4) blur(10px);border-bottom:1px solid var(--garis)}
+.fokus-judul{min-width:0;flex:1}
+.fokus-judul h1{font-size:1.15rem;line-height:1.3;word-break:break-word}
+.fokus-judul p{color:var(--tinta2);font-size:.82rem;margin-top:.1rem}
+.fokus-atas .aksi{display:flex;gap:.45rem;flex-wrap:wrap}
+.fokus-grid{display:grid;grid-template-columns:minmax(0,1fr) 22rem;gap:1rem;align-items:start}
+.fokus-samping{position:sticky;top:5.2rem;max-height:calc(100vh - 6.2rem);overflow:auto;
+  border-radius:var(--r-l)}
+.fokus-samping .kartu:last-child{margin-bottom:0}
+.fokus-utama .kartu{overflow:visible}
+.fokus .periksa-nama{font-size:.9rem}
+.kunci-pintas{display:grid;gap:.25rem;font-size:.8rem;color:var(--tinta2);
+  border-top:1px solid var(--garis);padding-top:.75rem;margin-top:.9rem}
+.kunci-pintas b{color:var(--tinta)}
+.kunci-pintas kbd{font:600 .7rem/1 Consolas,monospace;padding:.12rem .3rem;
+  border:1px solid var(--garis2);border-radius:3px;background:var(--papan2)}
+@media (max-width:1000px){
+  .fokus-grid{grid-template-columns:1fr}
+  .fokus-samping{position:static;max-height:none;order:-1}
+}
+
+/* Kotak centang yang labelnya sebaris — dipakai di tabel, tempat kolomnya
+   sempit dan label di bawah kotaknya terbaca seperti baris terpisah. */
+.centang-sebaris{display:inline-flex;align-items:center;gap:.35rem;margin:0;
+  font-weight:500;white-space:nowrap;cursor:pointer}
+.centang-sebaris input{margin:0;cursor:pointer}
+
+ul.rapat{margin:.45rem 0 0;padding-left:1.15rem;line-height:1.55}
+ul.rapat li{margin:.1rem 0}
+
+@media (max-width:680px){
+  .periksa-kepala{display:none}
+  .periksa-baris{grid-template-columns:1fr;gap:.4rem}
+  .periksa-pilih{padding-left:2.4rem}
+  .periksa-pilih.segmen{margin-left:2.4rem;padding-left:0;justify-self:start}
+  .periksa-pilih.segmen .pil{padding:.45rem .7rem}
+  .fokus-atas{margin-inline:-1rem;padding-inline:1rem}
+  .dalam-1 .periksa-teks{padding-left:.6rem}
+  .dalam-2 .periksa-teks{padding-left:1.2rem}
+  .dalam-3 .periksa-teks{padding-left:1.8rem}
+}
+
+/* ------------------------------------------- banyak surat dalam satu butir
+   Satu surat satu kotak, bernomor, dengan tombol hapus di ujung. */
+.periksa-surat{display:grid;gap:.35rem;margin-top:.4rem;justify-items:start}
+.surat-baris{display:grid;grid-template-columns:1.4rem minmax(0,1fr) auto;gap:.35rem;
+  align-items:center;width:100%}
+.surat-no{font:600 .75rem/1 Consolas,monospace;color:var(--tinta3);text-align:right}
+.surat-baris input{width:100%}
+.surat-baris .ikon-btn{width:1.7rem;height:1.7rem;color:var(--tinta3)}
+.surat-baris .ikon-btn:hover{color:var(--galat);background:var(--galat-lembut)}
+/* Rincian surat pada butir biasa baru ditawarkan sesudah suratnya dinyatakan
+   ada — sebelum itu cuma menambah keramaian di sepuluh butir alas hak. */
+.periksa-baris:not(:has(input[type=radio][value="1"]:checked,input[type=radio][value="3"]:checked))
+  .periksa-surat:not(:has(.surat-baris)){display:none}
+.periksa-surat [data-tambah-surat]{padding-left:.3rem}
+
+/* ------------------------------------------------ susun formulir kelengkapan */
+.pengantar-aksi{display:flex;gap:1rem;align-items:flex-start;justify-content:space-between;
+  flex-wrap:wrap}
+.susun-pintu{display:flex;gap:1rem;align-items:center;justify-content:space-between;
+  flex-wrap:wrap;padding:.75rem .9rem;margin-bottom:.9rem;border-radius:var(--r);
+  background:var(--aksen-lembut);border:1px solid var(--aksen-garis)}
+.susun-pintu>div{display:grid;gap:.15rem}
+.susun-petunjuk{margin:0 0 .8rem}
+.fokus-grid.tunggal{grid-template-columns:minmax(0,1fr)}
+
+ol.susun{list-style:none;margin:0;padding:0;border:1px solid var(--garis);
+  border-radius:var(--r);overflow:hidden}
+ol.susun.sibuk{opacity:.55;pointer-events:none}
+.susun-baris{display:grid;grid-template-columns:1.2rem minmax(0,1fr) auto;gap:.6rem;
+  align-items:start;padding:.55rem .7rem;border-bottom:1px solid var(--garis);
+  background:var(--papan);position:relative;margin:0;scroll-margin:6rem 0}
+.susun-baris:last-child{border-bottom:0}
+.susun-baris:hover{background:var(--papan2)}
+.susun-baris.kepala{background:var(--papan2)}
+.susun-baris.mati{opacity:.6}
+.susun-baris.mati .susun-nama{text-decoration:line-through}
+.susun-baris.sorot{animation:sorot 1.6s ease-out}
+.susun-baris.diseret{opacity:.4}
+.susun-baris.tujuan-sebelum{box-shadow:inset 0 3px 0 var(--aksen)}
+.susun-baris.tujuan-sesudah{box-shadow:inset 0 -3px 0 var(--aksen)}
+.susun-baris.tujuan-dalam{background:var(--aksen-lembut);box-shadow:inset 0 0 0 2px var(--aksen)}
+.susun-pegang{cursor:grab;color:var(--tinta3);font-weight:700;letter-spacing:-.15em;
+  user-select:none;padding-top:.15rem;text-align:center}
+.susun-pegang:hover{color:var(--aksen)}
+.susun-isi{display:grid;grid-template-columns:2.2rem minmax(0,1fr);gap:.4rem;min-width:0}
+.dalam-1 .susun-isi{padding-left:1.4rem}
+.dalam-2 .susun-isi{padding-left:2.8rem}
+.dalam-3 .susun-isi{padding-left:4.2rem}
+.susun-no{font:700 .8rem/1.6 Consolas,monospace;color:var(--aksen);text-align:right}
+.susun-no.tanpa{color:var(--tinta3)}
+.susun-nama{font-size:.88rem;line-height:1.5}
+.susun-baris.kepala .susun-nama{font-weight:700}
+.susun-cap{display:flex;gap:.3rem;flex-wrap:wrap;margin-top:.3rem;align-items:center}
+.susun-cap:empty{display:none}
+.susun-cap .petunjuk{margin:0}
+.susun-aksi{display:flex;gap:.25rem;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+.susun-geser{display:inline-flex;border:1px solid var(--garis);border-radius:var(--r);
+  overflow:hidden;background:var(--papan)}
+.susun-geser .ikon-btn{width:1.8rem;height:1.8rem;border-radius:0;font-size:.85rem;
+  color:var(--tinta2)}
+.susun-geser .ikon-btn+.ikon-btn{border-left:1px solid var(--garis)}
+.susun-geser .ikon-btn:hover{background:var(--aksen-lembut);color:var(--aksen)}
+/* Tombol panah baru tampil saat baris disorot, supaya daftar panjang tetap
+   terbaca; di layar sentuh selalu tampil. */
+@media (hover:hover){
+  .susun-baris .susun-geser,.susun-baris .susun-aksi>.btn.hantu{opacity:0;transition:opacity .12s}
+  .susun-baris:hover .susun-geser,.susun-baris:focus-within .susun-geser,
+  .susun-baris:hover .susun-aksi>.btn.hantu,.susun-baris:focus-within .susun-aksi>.btn.hantu{opacity:1}
+}
+.susun-aksi .btn.aktif{background:var(--aksen-lembut);color:var(--aksen);
+  border-color:var(--aksen-garis)}
+/* Panel sunting membentang selebar baris, di bawah bunyinya. */
+.susun-baris:has(.susun-panel:not([hidden])){background:var(--aksen-lembut)}
+.susun-panel{grid-column:1/-1;background:var(--papan);border:1px solid var(--aksen-garis);
+  border-radius:var(--r);padding:.8rem;margin-top:.2rem}
+.susun-panel[hidden]{display:none}
+.susun-medan{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:.7rem}
+.susun-medan .penuh{grid-column:1/-1}
+.susun-medan textarea{width:100%;resize:vertical}
+.susun-centang{display:flex;flex-direction:column;gap:.35rem}
+.susun-centang .centang-sebaris{white-space:normal;display:flex;align-items:flex-start;
+  gap:.45rem;font-size:.84rem;line-height:1.4}
+.susun-centang input[type=checkbox]{width:auto;flex:none;margin-top:.15rem}
+.susun-lanjut>summary{cursor:pointer;font-size:.82rem;font-weight:600;color:var(--tinta2);
+  padding:.2rem 0}
+.susun-lanjut[open]>summary{margin-bottom:.6rem}
+.susun-samping .susun-medan{grid-template-columns:minmax(0,1fr)}
+.susun-atur>summary{cursor:pointer;list-style:none}
+.susun-atur>summary::-webkit-details-marker{display:none}
+.susun-atur>summary h2{margin:0}
+.susun-atur>summary h2::after{content:"▸";margin-left:auto;color:var(--tinta3)}
+.susun-atur[open]>summary h2::after{content:"▾"}
+.susun-mati>summary{padding:.75rem 1rem;cursor:pointer;font-size:.87rem}
+.susun-mati ol.susun{margin:0 1rem 1rem}
+@media (max-width:680px){
+  .susun-baris{grid-template-columns:minmax(0,1fr)}
+  .susun-pegang{display:none}
+  .susun-aksi{justify-content:flex-start}
+  .susun-medan{grid-template-columns:minmax(0,1fr)}
+  .dalam-1 .susun-isi{padding-left:.7rem}
+  .dalam-2 .susun-isi{padding-left:1.4rem}
+  .dalam-3 .susun-isi{padding-left:2.1rem}
 }

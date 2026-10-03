@@ -25,20 +25,196 @@ Untuk berhenti: tutup jendela hitamnya, atau tekan `Ctrl+C`.
 
 ## Isi halaman
 
-Empat menu, dan tiap halaman hanya menampilkan yang sedang dipakai:
+**Menu di sisi kiri**, tetap di tempatnya seperti KKP. Tombol `‹` di sebelah nama
+aplikasi menguncupkannya jadi ikon saja kalau perlu ruang lebih — pilihan itu
+diingat peramban. Di layar sempit menunya jadi laci yang dibuka lewat tombol di
+bilah atas, dan menutup sendiri begitu salah satu menunya ditekan.
+
+Halaman **Berkas baru** dituntun per langkah, bukan bertab: petugas yang baru
+pertama kali memakai aplikasi ini tidak perlu menebak harus mulai dari mana.
+Tab Sidang dan Cetak sengaja tidak muncul saat membuat — keduanya baru berarti
+setelah berkasnya ada. Begitu tersimpan, berkasnya terbuka sebagai delapan tab
+biasa supaya pengisian lanjutannya bisa melompat ke mana saja.
+
+Tiap halaman lain **dipecah per tab**, tidak memanjang ke bawah. Tab yang terakhir
+dipakai diingat peramban, dan tautan yang menunjuk ke dalam salah satu tab
+(misalnya sesudah menyimpan) membuka tab itu sendiri.
+
+Lima menu, dan tiap halaman hanya menampilkan yang sedang dipakai:
 
 | Menu | Bentuknya |
 |---|---|
-| **Berkas** | Satu tabel, disaring kotak cari dan tombol status (Semua / Draf / Diperiksa / Selesai / Ditolak) yang berikut jumlahnya. |
+| **Pradaftar** | Satu tabel, disaring kotak cari dan tombol keadaan (Semua / Belum lengkap / Siap diterima / Diterima / Dikembalikan / Batal) yang berikut jumlahnya. Pemeriksaan kelengkapan berkas **sebelum** didaftar di loket. |
+| **Pradaftar baru** | Dituntun tiga langkah: Pemohon → Letak tanah → Kelengkapan berkas. Sesudah tersimpan, pradaftarnya terbuka sebagai empat tab. |
+| **Berkas** | Satu tabel berhalaman (10/25/50/100 per halaman), disaring kotak cari dan dropdown Jenis hak (HM, WAKAF, …), Status, Kegiatan, dan Kecamatan — tiap pilihan berikut jumlahnya. Saringan tersimpan di alamat (`/berkas?hak=WAKAF&hal=2`), jadi bisa ditandai atau dibagikan. |
+| **Berkas baru** | Dituntun enam langkah bernomor: Jenis permohonan → Pihak → Bidang tanah → Riwayat tanah → Dokumen → Foto lapangan. Tiga terakhir bertanda **boleh nanti** dan ada tombol **Lewati**. Simpan hanya ada satu, di ujung langkah terakhir. Sesudah tersimpan, berkasnya langsung terbuka sebagai delapan tab biasa. |
 | **Berkas yang dibuka** | Delapan tab. Judul, tombol Simpan, dan bilah tabnya menempel di atas, jadi tetap terjangkau sampai bawah. Tab **Cetak** memakai angka: merah kalau ada yang menghalangi pencetakan, kuning kalau cuma peringatan, centang hijau kalau bersih. |
-| **Data referensi** | Kartu lipat: matriks jenis hak, pustaka klausa, tiap SK panitia, dan wilayah (daftar induk Kemendagri, kecamatan, desa/kelurahan). |
-| **Template** | Kartu lipat per template — BAP, Risalah, SK untuk Hak Milik, dan ketiganya lagi untuk Hak Wakaf — berikut penjelasan penandanya. |
+| **Data referensi** | Lima tab: **Jenis hak**, **Klausa**, **Kelengkapan** (daftar persyaratan yang dipakai Pradaftar), **Wilayah** (daftar induk Kemendagri, kecamatan, desa/kelurahan), **Panitia A** (satu kartu per SK). Di dalam tab Wilayah dan Panitia A isinya tetap kartu lipat — jumlah SK panitia bertambah terus, jadi tidak mungkin dijadikan tab sendiri-sendiri. |
+| **Template** | Lima tab: **Hak Milik & hak lain**, **Hak Wakaf**, **Hak Pakai**, **Cetakan loket**, dan **Penanda & cara pakai**. Tiap template satu kartu lipat. |
 | **Pengaturan** | Tiga tab: Kantor, Penyimpanan, Pengguna. |
 
 Kartu lipat berarti isi kartunya baru diambil dari server saat kartunya diklik —
 halaman referensi dan template tidak pernah memuat semua isinya sekaligus. Kartu yang
 terakhir dibuka dan tab yang terakhir dipakai diingat peramban. Kalau JavaScript mati,
 kepala kartunya tetap tautan biasa yang membuka bagian itu lewat server.
+
+## Pradaftar: memeriksa kelengkapan di loket
+
+Menu **Pradaftar**, di atas menu Berkas — karena di situlah urutan kerjanya:
+
+```
+pemohon datang ke loket
+  → Pradaftar baru: pemohon, letak tanah, lalu centang daftar kelengkapannya
+      → lengkap      → Terima di loket → jadi Berkas → Panitia A seperti biasa
+      → belum lengkap → cetak surat pengembalian, pemohon melengkapi, datang lagi
+```
+
+Yang dicentang adalah **Daftar Kelengkapan Persyaratan Permohonan Hak Milik**,
+salinan Lampiran Permen ATR/BPN 18/2021 angka 2 halaman 184–185 — delapan butir
+bernomor, sebagian punya anak butir berhuruf. Bunyi butirnya disalin apa adanya
+supaya cetakannya sama persis dengan formulir resminya.
+
+Empat sifat formulir itu ikut dibawa ke aplikasi, bukan diratakan jadi daftar
+centang biasa:
+
+| Sifat formulir | Di aplikasi |
+|---|---|
+| **Bertingkat** — grup dan anak butir | Baris berindentasi; kepala kelompok tidak dicentang, keadaannya disimpulkan dari anaknya |
+| **Alternatif** — «a … atau b …», «b …; dan/atau c …» | Grup terpenuhi begitu salah satunya ada. Alternatif yang tidak dipakai **tidak** ditandai kurang |
+| **Bersyarat** — grup Badan Hukum, butir h/i untuk HPL, butir 6 untuk Tanah Negara | Ditentukan jenis subjek pemohon dan asal tanahnya. Butir yang tidak berlaku tetap tampil, hanya diredupkan — petugas perlu melihat bahwa butir itu sengaja dilewati, bukan hilang |
+| **Isian bebas** — butir yang berakhir titik-titik | Ada kotak isian di sebelahnya untuk menulis nama suratnya |
+
+**Ada, tapi perlu koreksi.** Tiap butir punya tiga pilihan: *Ada*, *Perlu koreksi*,
+*Tidak Ada*. *Perlu koreksi* dipakai bila suratnya dibawa tetapi ada yang salah
+(belum dilegalisir, NIK beda, kedaluwarsa). Saat dipilih, muncul kotak catatan
+yang bisa diisi dari **catatan koreksi baku** (Data referensi → Kelengkapan →
+Catatan koreksi baku) atau diketik sendiri. Butir koreksi:
+
+- menahan penerimaan seperti butir yang kurang — terima bersyarat tetap bisa
+  dengan alasan tertulis, dan catatannya ikut tersalin ke dokumen pendukung berkas;
+- tercetak di kolom **Ada** pada formulir 184, dengan catatannya di belakang bunyi butir;
+- muncul di surat pengembalian dengan keterangan «Perlu diperbaiki: …», terpisah
+  dari yang «Belum ada».
+
+Yang disimpan pada pradaftar adalah **teks** catatannya, bukan rujukan ke daftar
+baku — menyunting atau menghapus catatan baku tidak mengubah pemeriksaan yang
+sudah lewat. Catatan baku boleh berlaku untuk semua butir atau khusus satu butir.
+
+**Lengkap atau tidak, dihitung — bukan disimpan.** Kolom `status` hanya menyimpan
+`baru`, `diterima`, `dikembalikan`, atau `batal`. Keadaan kelengkapannya dihitung
+ulang dari centangannya setiap kali dibutuhkan, sama seperti terbilang dan luas
+berhuruf. Kalau disimpan, akan ada baris bertanda "lengkap" yang centangannya
+sudah berubah.
+
+**Nomor agenda loket** diberi saat pradaftar dibuat — `PD-0012/2026`, berjalan per
+tahun lewat mekanisme penomoran yang sama dengan Risalah dan SK, jadi tidak bisa
+terduplikasi. Nomor berkas baru keluar kalau berkasnya benar-benar diterima.
+
+### Terima di loket
+
+Tombolnya di tab **Kesimpulan & cetak**. Yang terjadi: berkas baru dibuat, lalu
+isian pradaftar disalin ke sana — inilah alasan pradaftar ada di aplikasi yang
+sama, bukan di buku tersendiri.
+
+| Dari pradaftar | Masuk ke berkas |
+|---|---|
+| Jenis hak, jenis kegiatan, asal tanah | kolom `berkas` yang sama |
+| Pemohon | pihak berperan *penerima hak* |
+| Penerima kuasa | pihak berperan *kuasa* |
+| Desa, luas menurut surat, nomor PBT | bidang tanah |
+| Butir bercentang yang punya padanan slot baku | slot dokumen baku, mis. butir 6 → *Jenis SPPF* |
+| Butir bercentang di bawah *Dasar Penguasaan atau Alas Hak* | baris dokumen berkategori *Bukti alas hak* |
+| Butir bercentang lainnya | baris *Dokumen tambahan* |
+
+Yang disalin hanya **nama suratnya**. Nomor, tanggal, dan pejabatnya tetap diisi
+petugas Panitia A — loket memang tidak mencatat itu.
+
+Sesudah diterima, pradaftarnya **terkunci jadi baca-saja** dan tidak bisa diterima
+dua kali: nomor berkas yang telanjur keluar tidak bisa ditarik, dan berkas kembar
+berarti satu permohonan disidangkan dua kali. Di tab **Dokumen** berkasnya muncul
+tautan balik ke pradaftar asalnya.
+
+Berkas yang belum lengkap **tetap bisa diterima**, tetapi alasannya wajib ditulis
+dan ikut tersimpan — praktiknya ada berkas yang diterima bersyarat.
+
+### Cetakannya
+
+Dua, keduanya dari tab **Kesimpulan & cetak**:
+
+| Cetakan | Isinya |
+|---|---|
+| **Daftar Kelengkapan Persyaratan** | Formulir 184 terisi, lengkap dengan kolom Ada / Tidak Ada — untuk arsip berkas |
+| **Surat pengembalian berkas** | Hanya butir yang masih kurang atau perlu koreksi, dengan kolom keterangan — diserahkan ke pemohon. Mati kalau kelengkapannya sudah terpenuhi |
+
+Keduanya membuka **pratinjau PDF**, bukan unduhan: formulir loket dibaca sebentar
+lalu dicetak, tidak disunting, jadi mengunduh DOCX dulu cuma menambah satu
+langkah. Dari halaman pratinjaunya ada **Cetak** (membuka dialog cetak peramban
+langsung dari PDF yang tampil), **Unduh PDF**, **Unduh DOCX** untuk yang perlu
+menyuntingnya dulu, dan **Buat ulang** kalau datanya baru diubah.
+
+Mencetak selalu boleh, termasuk pada pradaftar yang sudah diterima atau sudah
+ditutup — formulirnya justru dibutuhkan sebagai lampiran arsip berkas, dan
+mencetak tidak mengubah apa pun.
+
+Keduanya memakai template DOCX biasa (`templates/checklist.docx` dan
+`pengembalian.docx`), jadi tata naskahnya bisa diubah lewat menu **Template** →
+tab *Cetakan loket* seperti BAP, Risalah, dan SK. Kalau templatenya perlu
+dikembalikan ke bentuk awal: `python -m berkas.perkakas.siapkan_checklist`
+(**menimpa** hasil suntingan).
+
+Berbeda dengan BAP/Risalah/SK, cetakan loket **tidak disimpan** ke folder
+`keluaran/` dan tidak dicatat di arsip cetak: isinya bisa dirakit ulang persis
+dari pradaftarnya kapan saja. DOCX dan PDF-nya menumpang di folder `pratinjau/`
+sebagai singgahan biasa, dan ikut dipangkas sendiri di 40 berkas terakhir.
+Siapa yang memeriksa dan kapan sudah tercatat di baris pradaftarnya sendiri.
+
+Singgahannya tidak perlu dicatat di mana pun: **waktu ubah DOCX-nya disetel ke
+waktu ubah pradaftarnya**, jadi perbandingan mtime yang sudah dipakai
+`pdf.ke_pdf()` otomatis tahu kapan PDF-nya basi. Cetakan yang datanya tidak
+berubah langsung tampil tanpa memanggil Word lagi.
+
+Di komputer tanpa Microsoft Word maupun LibreOffice, halaman pratinjaunya
+mengatakan begitu dan tetap menawarkan unduhan DOCX — sama seperti pratinjau
+dokumen Panitia A.
+
+### Mengubah daftar kelengkapannya
+
+Menu **Data referensi** → tab **Kelengkapan**. Yang bisa disunting admin dua hal
+yang memang berbeda antar kantor:
+
+- **bunyi butirnya**, dan
+- **wajib atau tidaknya** — butir yang tidak wajib tetap tercetak dan tetap bisa
+  dicentang, hanya tidak menahan penerimaan berkas di loket.
+
+Tiga butir sudah tidak wajib sejak awal karena keluaran Kantor Pertanahan sendiri,
+bukan dokumen yang dibawa pemohon: **Peta Bidang Tanah** (terbit sesudah
+pengukuran), **Risalah Pemeriksaan Tanah A** (sesudah sidang Panitia A), dan
+**Surat Pengantar dari Kantor Pertanahan**. Kantor yang alurnya berbeda tinggal
+menyalakan wajibnya di sini.
+
+Susunan nomor, huruf, dan tingkatannya sengaja **tidak** bisa diubah dari layar —
+kalau bisa, cetakannya tidak lagi sama dengan formulir resminya.
+
+### Menambah formulir untuk jenis hak lain
+
+Yang terpasang: Hak Milik (`184-HM`) dan Hak Pakai dengan jangka waktu
+(`190-HP`, Lampiran angka 5 huruf a, hlm. 190-191). Lampiran Permen 18/2021 memuat format
+serupa untuk HGB, Hak Pakai selama dipergunakan, HPL, perubahan hak, dan izin peralihan. Menambahkannya
+**tidak mengubah kode**, cukup dua hal di `berkas/db.py`:
+
+1. satu baris di `KELENGKAPAN` — kode, judul, jenis hak, dan varian templatenya;
+2. satu daftar butir di `KELENGKAPAN_BUTIR`, memakai penolong `_butir()`.
+
+Kalau tata naskah cetakannya juga berbeda, tambahkan `templates/checklist-<varian>.docx`;
+selama berkas itu belum ada, yang dipakai template bakunya. Formulir yang dipakai
+sebuah pradaftar dipilih dari jenis haknya, yang paling khusus menang — pola yang
+sama dengan pemilihan blok klausa.
+
+Formulir resmi dipasang sekali sebagai satu kesatuan, dikenali dari `kode`-nya.
+Sesudah terpasang ia jadi milik kantor: suntingan admin tidak akan tertimpa saat
+aplikasi diperbarui.
+
+---
 
 ## Memasukkan data lama
 
@@ -232,6 +408,7 @@ Varian yang salah satu dokumennya belum ada jatuh kembali ke template baku.
 |---|---|
 | `bap.docx`, `risalah.docx`, `sk.docx` | Hak Milik dan hak lainnya |
 | `bap-wakaf.docx`, `risalah-wakaf.docx`, `sk-wakaf.docx` | Hak Wakaf |
+| `bap-hp.docx`, `risalah-hp.docx`, `sk-hp.docx` | Hak Pakai (perorangan dan badan hukum) |
 
 ### Yang diisi pada berkas wakaf
 
@@ -242,6 +419,7 @@ Semuanya diisi sekali, di tempat yang sudah ada — tidak ada isian kembar:
 | Nama seluruh Nazhir di judul SK dan Risalah | tab **Pihak**: Nazhir pertama di kartu *Penerima hak*, sisanya baris *Pihak lain* berperan **Nazhir** |
 | Nama, NIK, TTL, domisili, pekerjaan tiap Nazhir (Risalah mencetaknya per orang, a.i/a.ii/a.iii) | baris Nazhir itu juga — barisnya bertambah sendiri sesuai jumlah Nazhir |
 | Nama Wakif di Menimbang SK dan di DATA PENDUKUNG | baris *Pihak lain* berperan **Wakif** |
+| Nama, domisili, NIK, pekerjaan tiap Wakif (Risalah, *Uraian mengenai Pemohon* nomor 2, a.i/a.ii/…) | baris Wakif itu juga |
 | Akta Ikrar Wakaf yang dirujuk Menimbang SK | tab **Dokumen** → slot *Akta Ikrar Wakaf* |
 | Pengesahan Nazhir oleh PPAIW | tab **Dokumen** → slot *Pengesahan Nazhir oleh PPAIW* |
 | Bentuk Nazhir (perseorangan / organisasi / badan hukum) | *Jenis subjek* penerima hak |
@@ -253,12 +431,70 @@ Yang diperiksa sebelum cetak, selain pemeriksaan yang berlaku umum:
 
 | Pemeriksaan | Dasar |
 |---|---|
-| Nazhir perseorangan paling sedikit 3 orang | Pasal 4 ayat (2) PP 42/2006 |
+| Nazhir perseorangan paling sedikit 3 orang — hanya peringatan, karena AIW lama ada yang Nazhirnya satu orang | Pasal 4 ayat (2) PP 42/2006 |
 | Wakif wajib ada | Permen ATR/BPN 2/2017 |
 | Akta Ikrar Wakaf wajib ada | Pasal 32 UU 41/2004 |
 | Pengesahan Nazhir dari PPAIW | Pasal 14 PP 42/2006 |
 | NIK dan TTL tiap Nazhir terisi | Risalah mencetaknya per orang |
+| Domisili, NIK, pekerjaan tiap Wakif terisi (peringatan) | Risalah mencetaknya per orang |
 | Hak Wakaf tidak berjangka waktu | UU 41/2004 |
+
+## Tata naskah Hak Pakai: perorangan dan badan hukum
+
+Pilih jenis hak `HP` di tab Berkas, dan ketiga dokumennya dirakit dari set Hak Pakai
+(`bap-hp.docx`, `risalah-hp.docx`, `sk-hp.docx`). Satu set melayani **perorangan
+maupun badan hukum** — yang menentukan adalah *Jenis subjek* penerima hak:
+
+| Bagian | Perorangan | Badan hukum |
+|---|---|---|
+| Risalah I — Uraian mengenai Pemohon | 1. Perorangan: nama, domisili, kewarganegaraan, NIK, pekerjaan | 1. Badan Hukum: nama, tempat kedudukan, akta pendirian, pengesahan, NIB/TDP (Lampiran VII) |
+| Risalah IV — Data Pendukung | KTP dan KK pemohon | fotokopi akta pendirian, akta perubahan, pengesahan, NIB, KTP pengurus, akta CSR — yang diisi saja |
+| Risalah VI dan VIII — telaah subjek | UUPA Pasal 42 huruf a, Permen 18/2021 Pasal 111 ayat (2) huruf a | UUPA Pasal 42 huruf c, PP 18/2021 Pasal 49 ayat (2) huruf b, Permen 18/2021 Pasal 111 ayat (2) huruf b |
+| SK Membaca a, KESATU | «bertempat tinggal di …» | «berkedudukan di …» |
+| SK Menimbang a | WNI, alamat, NIK (Lampiran VI format A.1.a) | badan hukum, kedudukan, bidang usaha, akta pendirian + notaris, pengesahan, akta perubahan + persetujuannya, OSS/NIB (format A.1.b) |
+| SK Menimbang — CSR | — | bila akta kesanggupan CSR diisi (Pasal 114 ayat (1) huruf f angka 9) |
+| SK Mengingat | — | UU bentuk badannya: PT → UU 40/2007, Yayasan → UU 16/2001 jo. 28/2004, Koperasi → UU 25/1992 |
+| BAP | «Sdr./Sdri. Nama» | nama badan hukumnya saja |
+
+Yang sama untuk keduanya: sebutannya «Hak Pakai dengan jangka waktu», jangka
+waktunya (isian *Jangka waktu* di tab Sidang, paling lama 30 tahun — Pasal 113)
+disebut di Risalah III dan X serta di SK Menimbang d.6, Menetapkan, dan KESATU, dan
+diktum KEDUA mendapat butir perpanjangan paling lama 20 tahun.
+
+Di dalam template, paragraf `{{!badan_hukum}}` hanya tercetak untuk perorangan dan
+`{{?badan_hukum}}` hanya untuk badan hukum; baris tabel Risalah dipilih lewat blok
+`{{#pemohon_perorangan}}` / `{{#pemohon_badan_hukum}}`.
+
+### Yang diisi pada berkas Hak Pakai badan hukum
+
+Tab **Pihak** → kartu *Bila penerima hak adalah badan hukum*. Pada berkas Hak Pakai
+kartu itu bertambah bagian **Rincian untuk SK Hak Pakai**: bidang usaha, kota
+notaris, pejabat yang mengesahkan, NIK pengurus, akta perubahan terakhir berikut
+persetujuannya, tanggal terdaftar di OSS, dan akta kesanggupan CSR. Semuanya
+boleh kosong — kalimat SK disusun dari yang terisi saja, tanpa titik-titik. Pada
+jenis hak lain bagian itu tidak tampak, tetapi isinya tetap tersimpan.
+
+Seperti isian wakaf, bagian ini baru muncul **setelah** berkas disimpan dengan jenis
+hak `HP`.
+
+Yang diperiksa sebelum cetak, khusus Hak Pakai (semuanya peringatan):
+
+| Pemeriksaan | Dasar |
+|---|---|
+| Badan hukum: kedudukan, bidang usaha, tanggal akta, notaris, nomor pengesahan, NIB | Menimbang huruf a, Lampiran VI |
+| Akta perubahan diisi tanpa persetujuan/pencatatannya | Lampiran VI format A.1.b |
+| Pengurus yang mewakili belum diisi | — |
+| Subjek *instansi* (Hak Pakai selama dipergunakan) belum punya tata naskah sendiri | Pasal 111 ayat (3) |
+
+### Membangun ulang template Hak Pakai
+
+Template Hak Pakai **dirakit dari template Hak Milik yang sedang terpasang** — kop,
+susunan panitia, dasar hukum, dan diktumnya memang sama — lalu bagian yang
+berbeda diganti oleh `python -m berkas.perkakas.siapkan_hak_pakai`. Perintah itu
+**menimpa** `*-hp.docx`; jalankan hanya kalau template Hak Milik berubah banyak dan
+set Hak Pakai mau diturunkan ulang darinya. Kalau kalimat jangkarnya sudah tidak
+ada di template Hak Milik, perkakasnya berhenti dan menyebut kalimat mana.
+Suntingan kecil cukup lewat menu **Template** → tab *Hak Pakai* seperti biasa.
 
 ## Kalau tata naskah berubah
 
@@ -298,12 +534,16 @@ Dokumen sumbernya harus `.docx`; kalau masih `.doc`, buka di Word lalu simpan ul
 ## Yang dibutuhkan
 
 - Python 3.10 atau lebih baru
-- `python-docx` dan `openpyxl` — dipasang otomatis oleh `jalankan.bat`
-- `Pillow` (dianjurkan) — untuk memutar tegak dan memperkecil foto lapangan; juga
-  dipasang `jalankan.bat`
+- `Flask` dan `waitress` — kerangka web dan server WSGI
+- `python-docx` dan `openpyxl` — perakit DOCX dan pembaca XLSX
+- `Pillow` (dianjurkan) — untuk memutar tegak dan memperkecil foto lapangan
 
-Tidak ada kerangka kerja web, tidak ada basis data server, tidak perlu internet.
-HTML, CSS, dan JavaScript ditulis sendiri di folder `static/`.
+Semuanya dipasang otomatis oleh `jalankan.bat`. Versinya dipatok di
+`requirements.txt`; untuk memasang sendiri:
+`python -m pip install -r requirements.txt`
+
+Tidak ada basis data server, tidak ada ORM, dan tidak perlu internet. HTML, CSS,
+dan JavaScript tetap ditulis sendiri di `web.py` dan folder `static/`.
 
 ---
 
@@ -311,23 +551,51 @@ HTML, CSS, dan JavaScript ditulis sendiri di folder `static/`.
 
 | Berkas | Isi |
 |---|---|
-| `server.py` | Server web dan penyimpanan formulir |
-| `web.py` | Perakit halaman HTML |
-| `db.py` | Skema SQLite dan data referensi awal |
-| `wilayah.py` | Daftar induk kecamatan/desa Kemendagri dan riwayat kepala desa |
-| `konteks.py` | Nilai turunan dan seluruh aturan validasi |
-| `docxgen.py` | Mesin perakit DOCX (perulangan, kondisi, lampiran foto) |
-| `foto.py` | Simpan, putar tegak, perkecil, dan buang foto lapangan |
-| `siapkan_template.py` | Pengubah dokumen Word ber-MERGEFIELD jadi template sistem |
-| `templat.py` | Unduh, unggah, cadangkan, dan pulihkan template dari halaman Template |
-| `terbitkan.py` | Penomoran otomatis dan pencatatan arsip cetak |
-| `penyambung.py` | Kata penyambung di kanan bawah halaman, lewat Microsoft Word |
-| `pemeliharaan.py` | Hitung isi folder dan buang berkas yang bisa dibuat ulang |
-| `pdf.py` | Pratinjau PDF lewat Microsoft Word atau LibreOffice |
-| `impor_excel.py` | Pemindah data dari Excel lama (rutin dan wakaf) |
-| `util.py` | Terbilang, nama hari/bulan, luas, hari kerja |
+| `jalankan.py` | Titik masuk sehari-hari: siapkan basis data, lalu jalankan waitress |
+| `wsgi.py` | Titik masuk WSGI untuk server production |
+| **`berkas/`** | **Paket aplikasinya** |
+| `berkas/jalur.py` | Letak tiap folder, dihitung sekali — satu-satunya yang memakai `__file__` |
+| `berkas/aplikasi.py` | Pabrik Flask: koneksi per permintaan, penjagaan sesi, pendaftaran blueprint |
+| `berkas/db.py` | Skema, data referensi awal, dan penolong kueri lintas-basis-data |
+| `berkas/konfigurasi.py` | Setelan pemasangan: basis data, kunci rahasia, alamat |
+| `berkas/basis.py` | Lapisan tipis di atas SQLite dan PostgreSQL |
+| `berkas/sesi.py` | Sesi masuk — token di tabel `sesi`, kuki HttpOnly |
+| `berkas/izin.py` | Peran, kepemilikan berkas, dan penjaga tiap rute |
+| `berkas/kabar.py` | Kabar di atas halaman dan cara membacanya dari alamat |
+| `berkas/formulir.py` | Penyimpanan formulir berkas ke sebelas tabel, dan kueri daftarnya |
+| `berkas/pradaftar.py` | Pradaftar loket: centangan kelengkapan, hitungan lengkap/kurang, dan penaikannya jadi berkas |
+| `berkas/referensi.py` | Kueri data referensi — tanpa HTTP, tanpa HTML |
+| `berkas/wilayah.py` | Daftar induk kecamatan/desa Kemendagri dan riwayat kepala desa |
+| `berkas/web.py` | Perakit halaman HTML |
+| `berkas/pemeliharaan.py` | Hitung isi folder dan buang berkas yang bisa dibuat ulang |
+| `berkas/util.py` | Terbilang, nama hari/bulan, luas, hari kerja |
+| **`berkas/rute/`** | **Satu berkas per kelompok halaman** |
+| `rute/auth.py` | Masuk, keluar, ganti sandi, tambah pengguna |
+| `rute/pradaftar.py` | Daftar pradaftar, formulir empat tab, cetakan loket, dan terima di loket |
+| `rute/berkas.py` | Daftar berkas, formulir delapan tab, dan pencetakan |
+| `rute/referensi.py` | Halaman Data referensi dan seluruh penyimpanannya |
+| `rute/template.py` | Halaman Template: unduh, ganti, kembalikan dari cadangan |
+| `rute/pengaturan.py` | Identitas kantor dan perapian penyimpanan |
+| `rute/unduhan.py` | Mengeluarkan DOCX, foto, dan PDF |
+| **`berkas/dokumen/`** | **Perakitan dokumen — tidak tahu soal HTTP** |
+| `dokumen/konteks.py` | Nilai turunan dan seluruh aturan validasi |
+| `dokumen/docxgen.py` | Mesin perakit DOCX (perulangan, kondisi, lampiran foto) |
+| `dokumen/templat.py` | Unduh, unggah, cadangkan, dan pulihkan template |
+| `dokumen/terbitkan.py` | Penomoran otomatis dan pencatatan arsip cetak |
+| `dokumen/penyambung.py` | Kata penyambung di kanan bawah halaman, lewat Microsoft Word |
+| `dokumen/pdf.py` | Pratinjau PDF lewat Microsoft Word atau LibreOffice |
+| `dokumen/foto.py` | Simpan, putar tegak, perkecil, dan buang foto lapangan |
+| `dokumen/kelengkapan.py` | Rakit cetakan loket — tidak disimpan, langsung dikirim ke peramban |
+| **`berkas/perkakas/`** | **Skrip sekali jalan, dipanggil dengan `python -m`** |
+| `perkakas/siapkan_template.py` | Pengubah dokumen Word ber-MERGEFIELD jadi template sistem |
+| `perkakas/siapkan_checklist.py` | Pembangun template daftar kelengkapan dan surat pengembalian |
+| `perkakas/siapkan_hak_pakai.py` | Penurun set template Hak Pakai dari template Hak Milik |
+| `perkakas/impor_excel.py` | Pemindah data dari Excel lama (rutin dan wakaf) |
+| `perkakas/perbaiki_dokumen.py` | Perapian data hasil impor |
+| `perkakas/pindah_ke_pg.py` | Pindahkan isi SQLite ke PostgreSQL, id dipertahankan |
 | `static/` | style.css dan app.js |
 | `templates/` | Template DOCX hasil konversi, satu set per tata naskah (`cadangan/` berisi versi sebelumnya) |
+| `uji/` | Uji acuan: memastikan isi dokumen tidak berubah diam-diam |
 | `keluaran/` | Dokumen yang sudah dicetak |
 | `data/berkas.db` | Basis data — **backup berkas ini** |
 | `data/foto/` | Foto lapangan yang diunggah — **ikut di-backup** |
@@ -442,6 +710,58 @@ siapa yang mencetak.
 
 ---
 
+## Uji acuan
+
+Masalahnya begini: terbilang, luas berhuruf, selisih ukuran, penomoran a/i/romawi,
+dan kalimat otomatis terlalu banyak untuk diperiksa satu per satu setiap kali kode
+disentuh. Kesalahan kecil di situ tidak kelihatan sampai dokumennya telanjur
+ditandatangani.
+
+Jadi hasil yang sekarang dianggap benar direkam ke `uji/emas/`. Sesudah itu setiap
+perubahan kode dibandingkan dengan rekaman tadi, dan yang berbeda ditampilkan baris
+per baris.
+
+| Perintah | Yang dikerjakan |
+|---|---|
+| `uji.bat` | Konteks seluruh berkas + lapisan web. Cepat (beberapa detik), dipakai sehari-hari. |
+| `uji.bat penuh` | Ikut merakit DOCX untuk delapan berkas contoh. Sekitar satu menit. |
+| `uji.bat rekam` | Merekam ulang acuan. **Hanya** bila perubahannya memang disengaja. |
+
+Tiga lapis yang diperiksa:
+
+- **Konteks** — nilai setiap penanda `{{...}}` berikut hasil `periksa()`, untuk semua
+  berkas di basis data. Kalau ada yang berubah, selisihnya langsung menyebut nama
+  penandanya.
+- **Dokumen** — teks DOCX hasil rakitan. Yang dijaga di sini hal yang tidak kelihatan
+  di konteks: paragraf berulang, paragraf bersyarat, baris `;` yang harus jadi `.` di
+  ujung daftar, tabel kosong yang dibuang, dan ekor halaman kosong. Karena perakitan
+  DOCX lambat, yang dipakai hanya satu berkas per bentuk — dipilih sendiri dari isi
+  basis data, jadi jenis berkas baru ikut terwakili tanpa perlu diatur.
+- **Hak Pakai** (`uji/uji_hak_pakai.py`) — satu berkas Hak Milik di salinan basis
+  data dijadikan Hak Pakai, lalu ketiga dokumennya dirakit untuk pemohon perorangan
+  dan badan hukum: kalimat yang harus berbeda diperiksa, dan tak boleh ada sisa
+  «Hak Milik» atau penanda. Ikut menguji isian rincian badan hukum dan formulir 190-HP.
+- **Web** (`uji/uji_web.py`) — kode jawaban, alamat tujuan, dan bentuk kuki sesi
+  untuk tiap rute — 165 uji, meliputi seluruh blueprint, aturan peran,
+  penjagaan CSRF, dan susunan langkah pada formulir berkas baru. Dijalankan
+  di SQLite maupun PostgreSQL.
+- **Konfigurasi dan dialek** (`uji/uji_basis.py`) — penguraian setelan dan
+  penerjemahan SQL, termasuk penjaga yang menolak kembalinya dialek khas
+  SQLite ke dalam kode.
+  Tidak perlu rekaman acuan: harapannya ditulis langsung di dalam ujinya.
+
+Basis datanya tidak pernah disentuh: uji selalu bekerja di salinan sementara, dan
+dokumen hasil uji tidak masuk ke `keluaran/`.
+
+Kalau uji gagal, **baca dulu selisihnya.** Merekam ulang supaya uji jadi hijau sama
+saja dengan membuang jaring pengamannya — kesalahan yang baru muncul ikut terekam
+sebagai kebenaran baru.
+
+Rekaman di `uji/emas/` tidak dilacak git karena berisi data pemohon yang sebenarnya.
+Di komputer baru, rekamannya dibuat sekali dengan `uji.bat rekam`.
+
+---
+
 ## Batas yang perlu diketahui
 
 - **HM Satuan Rumah Susun** sudah ada di matriks jenis hak, tetapi belum punya
@@ -450,8 +770,160 @@ siapa yang mencetak.
   divalidasi terhadap luas. Perlu Permen ATR/BPN 5/2025 jo. 9/2025.
 - **Keluaran hanya DOCX.** Untuk PDF, buka di Word lalu simpan sebagai PDF.
 - Aplikasi berjalan di satu komputer (`localhost`). Untuk dipakai bersama lewat
-  jaringan kantor, alamat di `server.py` perlu diubah dan hak akses per peran
-  ditambahkan.
+  jaringan kantor, setel `ALAMAT=0.0.0.0` (lihat `jalankan_jaringan.bat`).
+
+## Peran dan hak akses
+
+Dua peran, disimpan di kolom `pengguna.peran` dan diatur admin lewat menu
+**Pengaturan → Pengguna**.
+
+| | Admin | Petugas |
+|---|---|---|
+| Tambah pradaftar | ✓ | ✓ |
+| Lihat pradaftar | semua | miliknya sendiri |
+| Terima di loket & cetak | semua | miliknya sendiri |
+| Hapus pradaftar | ✓ | — |
+| Tambah berkas | ✓ | ✓ |
+| Lihat berkas | semua | miliknya sendiri + arsip impor |
+| Ubah berkas | semua | miliknya sendiri |
+| Cetak dokumen | semua | miliknya sendiri |
+| Hapus berkas | ✓ | — |
+| Unduh DOCX / PDF / foto | semua | berkas yang boleh dilihatnya |
+| Data referensi | ubah | **lihat saja** |
+| Template | ✓ | — (menunya tidak muncul) |
+| Identitas kantor & penyimpanan | ✓ | — |
+| Tambah pengguna & ubah peran | ✓ | — |
+| Ganti kata sandi sendiri | ✓ | ✓ |
+
+**Kepemilikan berkas** ada di kolom `berkas.dibuat_oleh`, diisi otomatis saat
+berkas dibuat. Petugas hanya melihat berkas yang dibuatnya sendiri.
+
+**Berkas hasil impor Excel** kolom itu kosong — tidak ada yang mengetiknya lewat
+aplikasi ini. Arsip tersebut sengaja dibiarkan terlihat semua orang supaya
+pekerjaan yang sedang berjalan tidak terputus, tetapi **hanya admin yang boleh
+mengubahnya**: tidak ada cara memastikan siapa yang berhak atas berkas yang
+pemiliknya tidak tercatat. Di daftar, berkas seperti ini bertanda `arsip impor`,
+dan formulirnya terbuka dalam mode baca-saja.
+
+Admin tidak bisa menurunkan perannya sendiri. Kalau itu admin terakhir, tidak
+akan ada lagi yang bisa menaikkan siapa pun dan aplikasinya terkunci tanpa jalan
+masuk selain menyunting basis datanya langsung.
+
+### Token anti-CSRF
+
+Tiap permintaan yang mengubah data (POST) wajib membawa token; yang tidak
+membawa ditolak sebelum menyentuh basis data. Tanpa ini, satu halaman jahat di
+tab sebelah cukup memuat formulir tersembunyi untuk menyuruh peramban petugas —
+lengkap dengan kukinya — menghapus berkas atau menaikkan peran seseorang.
+
+| | |
+|---|---|
+| Yang sudah masuk | token di kolom `sesi.csrf`, satu per sesi, mati sendiri saat keluar |
+| Yang belum masuk | token di kuki `csrf_tamu`, menjaga formulir masuk itu sendiri |
+
+Formulir masuk ikut dijaga karena tanpa itu penyerang bisa memaksa korban masuk
+ke akun miliknya, lalu menunggu korban mengetik data ke sana.
+
+Tokennya **disisipkan otomatis** ke tiap `<form method="post">` sesudah
+halamannya dirakit (`aplikasi.py`), bukan ditulis satu per satu di `web.py`.
+Alasannya: formulir baru yang lupa memanggilnya akan lolos tanpa penjagaan, dan
+itu tidak kelihatan sampai ada yang memanfaatkannya. Dengan penyisipan terpusat
+tidak ada yang bisa terlewat — termasuk potongan kartu lipat yang tidak melewati
+`layout()`. Uji `test_tiap_form_di_tiap_halaman_bertoken` menyapu seluruh halaman
+dan memastikannya.
+
+Kedua kukinya `HttpOnly` + `SameSite=Lax`: tidak terbaca JavaScript, dan tidak
+ikut terkirim pada permintaan lintas situs.
+
+Penjagaan masuk berjalan **sebelum** pemeriksaan token. Sesi yang habis di tengah
+pengisian formulir jadi berakhir di halaman masuk, bukan di halaman galat yang
+buntu. Token yang basi menghasilkan halaman "Formulir kedaluwarsa" yang menyuruh
+memuat ulang, bukan omelan.
+
+Aturan peran ada di satu berkas, `berkas/izin.py`, dan dipakai dua kali untuk tiap
+halaman: sekali oleh rute untuk menolak permintaan, sekali oleh `web.py` untuk
+menyembunyikan tombolnya. **Yang menjaga adalah penolakan di rute** —
+menyembunyikan tombol saja tidak menghalangi siapa pun yang mengetik alamatnya
+langsung, dan uji di `uji/uji_web.py` memang menembak rutenya, bukan memeriksa
+tombolnya.
+
+---
+
+## Basis data: SQLite atau PostgreSQL
+
+Bawaannya SQLite di `data/berkas.db` — tanpa setelan apa pun, tanpa server
+tambahan. Untuk pindah ke PostgreSQL, salin `.env.contoh` jadi `.env` lalu isi:
+
+```
+DB_URL=postgresql://panitia:ganti-sandinya@127.0.0.1:5432/panitia_a
+```
+
+Kata sandi yang memuat `@ : / ?` harus disandikan di dalam URL; kalau
+merepotkan, pakai bentuk per bagian (`DB_JENIS`, `DB_HOST`, `DB_PASSWORD`, …)
+yang menerimanya apa adanya. Variabel lingkungan sungguhan mengalahkan isi
+`.env`, jadi satu setelan bisa ditimpa sekali jalan tanpa menyunting berkas.
+
+### Pindah dari SQLite yang sudah terisi
+
+```bash
+python -m berkas.db                            # buat skemanya di PostgreSQL
+python -m berkas.perkakas.pindah_ke_pg --lihat # lihat rencananya dulu
+python -m berkas.perkakas.pindah_ke_pg         # jalankan
+```
+
+Nomor id dipertahankan apa adanya — dokumen yang sudah terbit menyebut nomor
+berkas, dan riwayat cetak menunjuk id; kalau id bergeser, tautan antar-tabel
+putus tanpa ada yang kelihatan salah. Seluruh pemindahan satu transaksi: satu
+baris gagal, semuanya dibatalkan. Jumlah baris tiap tabel diperiksa sebelum
+transaksinya ditutup, dan tujuan yang sudah dipakai ditolak kecuali `--paksa`.
+
+**Folder `data/foto/` dan `keluaran/` tidak ikut pindah** — keduanya berkas
+biasa di cakram, bukan isi basis data. Salin sendiri.
+
+### Bagaimana satu kode melayani dua basis data
+
+Kuerinya sendiri ditulis dalam dialek yang dimengerti keduanya: `ON CONFLICT`
+untuk upsert (bukan `INSERT OR REPLACE` yang khas SQLite), `RETURNING id`
+(bukan `cursor.lastrowid`), dan waktu dihitung di Python (bukan
+`datetime('now','localtime')`). Yang benar-benar tidak bisa disamakan cuma
+empat hal, dan semuanya diurus `basis.py`:
+
+| | SQLite | PostgreSQL |
+|---|---|---|
+| Penampung nilai | `?` | `%s` |
+| Bentuk baris | `sqlite3.Row` | dibuatkan yang setara |
+| Kolom id otomatis | `INTEGER PRIMARY KEY` | `GENERATED ALWAYS AS IDENTITY` |
+| Nama galat bentrok | `sqlite3.IntegrityError` | `psycopg.errors.IntegrityError` |
+
+Sengaja bukan ORM: seluruh kueri aplikasi ini SQL tulis tangan yang sudah
+terbukti, dan menggantinya dengan ORM berarti menulis ulang semuanya sekaligus
+membuang uji acuan yang menjaganya.
+
+Kolom waktu tetap TEXT `YYYY-MM-DD HH:MM:SS` di PostgreSQL, bukan `timestamp`,
+supaya data berpindah apa adanya dan perbandingan `<` `>` berperilaku sama.
+
+Rangkaian uji yang sama dijalankan di kedua basis data:
+
+```bash
+python -m unittest uji.uji_web
+DB_URL=postgresql://panitia:sandi@127.0.0.1:5432/panitia_a_uji     python -m unittest uji.uji_web
+```
+
+---
+
+## Memasang pembaruan
+
+Salin berkas yang berubah, lalu **nyalakan ulang layanannya**. Dua hal ikut
+bergantung pada itu:
+
+- Kode Python baru hanya terbaca saat proses dimulai.
+- `style.css` dan `app.js` dipanggil dengan `?v=<waktu ubah berkas>`, dan angka
+  itu dihitung sekali saat modul dimuat. Menyalakan ulang membuat alamatnya
+  berubah, sehingga peramban mengambil yang baru alih-alih memakai singgahan
+  lamanya. Tanpa itu, halaman baru bisa berjalan dengan JavaScript lama —
+  setengah rusak, dan sulit dikenali sebagai masalah singgahan.
+
+---
 
 ## Penyimpanan
 
@@ -484,13 +956,13 @@ memperkecil gambar di template sekali akan memperkecil semua cetakan berikutnya.
 
 ## Menjalankan di server Ubuntu
 
-Bisa. Seluruh aplikasinya Python biasa — pustaka bawaan + `python-docx` + `openpyxl`,
-basis datanya SQLite, tidak ada kerangka kerja dan tidak ada kode khusus Windows kecuali
-dua modul yang menyetir Microsoft Word.
+Bisa. Seluruh aplikasinya Python biasa — Flask + waitress + `python-docx` +
+`openpyxl`, basis datanya SQLite, dan tidak ada kode khusus Windows kecuali dua modul
+yang menyetir Microsoft Word.
 
 ```bash
 sudo apt install python3 python3-pip libreoffice-writer
-python3 -m pip install python-docx openpyxl Pillow
+python3 -m pip install -r requirements.txt
 # salin folder app/ berikut data/berkas.db, data/foto/, dan templates/ dari komputer lama
 ./jalankan.sh 8000 0.0.0.0
 ```
@@ -507,7 +979,8 @@ After=network.target
 User=panitia
 WorkingDirectory=/opt/panitia-a/app
 Environment=ALAMAT=127.0.0.1 PORTA=8000 HTTPS=1
-ExecStart=/usr/bin/python3 server.py
+Environment=KUNCI_RAHASIA=ganti-dengan-teks-acak-panjang
+ExecStart=/usr/bin/python3 jalankan.py
 Restart=on-failure
 
 [Install]
@@ -518,7 +991,13 @@ Lalu nginx di depannya untuk HTTPS (`proxy_pass http://127.0.0.1:8000;`). `ALAMA
 menentukan antarmuka yang didengarkan — biarkan `127.0.0.1` kalau ada nginx, isi
 `0.0.0.0` kalau langsung dipakai sejaringan. `HTTPS=1` menandai kuki sesi sebagai
 `Secure`; kuki sesinya sendiri sudah `HttpOnly` + `SameSite=Lax`, dan kata sandi
-disimpan sebagai PBKDF2-SHA256 200.000 putaran.
+disimpan sebagai PBKDF2-SHA256 200.000 putaran. `KUNCI_RAHASIA` diisi teks acak
+panjang dan tetap — kalau dibiarkan kosong, kunci dibuat baru tiap kali layanan
+dinyalakan ulang.
+
+Satu proses sudah cukup; yang dinaikkan kalau terasa lambat adalah jumlah utas
+(`UTAS=8`), bukan jumlah pekerja — SQLite tidak suka ditulisi banyak proses
+sekaligus.
 
 Yang perlu diketahui sebelum pindah:
 
