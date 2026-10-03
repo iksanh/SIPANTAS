@@ -31,7 +31,7 @@ waitress==3.0.2
 
 # Penggerak PostgreSQL. Hanya perlu bila DB_URL menunjuk postgresql://;
 # tanpa paket ini aplikasi tetap jalan di atas SQLite.
-psycopg[binary]==3.2.3
+psycopg[binary]>=3.2.3
 
 # Basis data bisa SQLite bawaan Python atau PostgreSQL, tanpa ORM. Perakit HTML juga masih
 # buatan sendiri di web.py. Uji acuan memakai unittest bawaan, tanpa pytest.
