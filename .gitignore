@@ -68,3 +68,4 @@ desktop.ini
 # Tidak dilacak karena isinya data pemohon yang sebenarnya (nama, NIK,
 # alamat, letak tanah), sama alasannya dengan folder data/.
 uji/emas/
+paramter.json

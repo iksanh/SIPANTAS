@@ -184,6 +184,10 @@ Memulihkan sungguhan: `systemctl stop sipantas`, timpa
 
 ## 9. Pembaruan Versi
 
+Kalau CI/CD (bagian 12) sudah dipasang, cukup `git push` ke `main`: GitHub
+Actions menguji lalu menjalankan `perbarui.sh` sendiri. Cara manual di bawah
+tetap berlaku, misalnya saat GitHub sedang bermasalah.
+
 Dari komputer pengembang: commit lalu `git push`. Lalu di server:
 
 ```bash
@@ -228,3 +232,75 @@ bisa menimpanya. Pilih salah satu:
 - `data/` (basis data dan foto berisi nama, NIK, dan letak tanah pemohon),
   `backup/`, `keluaran/`, `pratinjau/`, dan `uji/emas/` → sudah ada di `.gitignore`.
 - Repo GitHub sebaiknya **Private**.
+
+## 12. CI/CD dengan GitHub Actions (OIDC AWS)
+
+`.github/workflows/deploy.yml` berjalan di setiap push dan pull request:
+
+1. **Uji** — `uji.uji_basis` dan `uji.uji_web`, sekali di SQLite dan sekali di
+   PostgreSQL. Uji acuan (`uji_konteks`, `uji_dokumen`, `uji_hak_pakai`) tidak
+   ikut karena butuh data pemohon sungguhan; tetap jalankan `uji.bat penuh`
+   di komputer pengembang sebelum push.
+2. **Pasang** — hanya untuk push ke `main` yang lolos uji. GitHub menukar token
+   OIDC-nya dengan kredensial AWS sementara (tidak ada kunci AWS tersimpan di
+   GitHub), lalu mengirim perintah lewat **SSM Run Command** ke instance:
+   `perbarui.sh` sebagai `ubuntu`, kemudian memeriksa `http://127.0.0.1:8002/masuk`.
+   Tidak perlu SSH dan porta 22 tidak perlu dibuka untuk GitHub.
+
+Kalau `perbarui.sh` berhenti karena "template di server berbeda", job ini ikut
+gagal dan pesannya tampil di log Actions. Bereskan seperti di bagian 9, lalu
+klik **Re-run jobs**.
+
+### Persiapan sekali saja
+
+**a. Instance bisa dijangkau SSM.** AMI Ubuntu resmi sudah membawa SSM Agent.
+Tambahkan policy `AmazonSSMManagedInstanceCore` ke IAM role instance (role yang
+sama dengan yang dipakai `backup.sh` untuk S3). Periksa:
+
+```bash
+aws ssm describe-instance-information \
+  --query "InstanceInformationList[].[InstanceId,PingStatus]" --output table   # Online
+```
+
+**b. OIDC provider GitHub** (sekali per akun AWS; lewati kalau sudah ada,
+misalnya dari wakaf):
+
+```bash
+aws iam create-open-id-connect-provider \
+  --url https://token.actions.githubusercontent.com \
+  --client-id-list sts.amazonaws.com
+```
+
+**c. IAM role untuk GitHub.** Isi `<ID_AKUN>`, `<REGION>`, dan `<ID_INSTANCE>`
+di `deploy/aws/*.json` (salin dulu, jangan commit nilainya), lalu:
+
+```bash
+aws iam create-role --role-name sipantas-github-pasang \
+  --assume-role-policy-document file://trust-policy.json
+aws iam put-role-policy --role-name sipantas-github-pasang \
+  --policy-name pasang-ssm --policy-document file://izin-pasang.json
+```
+
+Trust policy hanya menerima token dari repo `iksanh/SIPANTAS` **dan**
+environment `produksi`; izinnya hanya `ssm:SendCommand` ke satu instance itu
+dengan dokumen `AWS-RunShellScript`. Kalau nama repo berubah, ubah juga `sub`.
+
+**d. GitHub** → Settings:
+
+- **Environments** → buat `produksi`. Sebaiknya batasi ke cabang `main`
+  (*Deployment branches*), dan tambahkan *Required reviewers* bila ingin
+  setiap pemasangan disetujui dulu.
+- **Secrets and variables → Actions → Variables** (bukan Secrets; tidak ada
+  yang rahasia di sini):
+
+  | Nama              | Contoh                                                  |
+  |-------------------|---------------------------------------------------------|
+  | `AWS_ROLE_ARN`    | `arn:aws:iam::123456789012:role/sipantas-github-pasang` |
+  | `AWS_REGION`      | `ap-southeast-3`                                        |
+  | `EC2_INSTANCE_ID` | `i-0abc123def4567890`                                   |
+
+**e. Server** tetap memerlukan akses baca ke repo untuk `git pull` (deploy key
+di bagian 2) dan `ubuntu` tetap boleh `sudo systemctl restart` tanpa sandi
+(bawaan AMI Ubuntu).
+
+Uji sekali dari tab **Actions** → **CI/CD** → **Run workflow** di `main`.

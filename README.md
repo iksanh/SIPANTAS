@@ -203,6 +203,29 @@ aplikasi diperbarui.
 
 ---
 
+## Ambil data dari aplikasi PHPT (by NIB)
+
+Pemohon dan tanah yang sudah diinput di aplikasi pengecekan berkas pradaftar
+(`laravel_app`, menu **Pemohon** dan **Tanah**) tidak perlu diketik ulang. Di
+langkah pertama **Berkas baru** dan **Pradaftar baru** ada kartu **Ambil dari
+aplikasi PHPT**: ketik NIB, tekan *Ambil data*, isiannya terisi dan ditandai
+berwarna. Belum ada yang tersimpan sampai **Simpan** ditekan.
+
+- NIB dicocokkan tanpa titik. PHPT sering hanya menyimpan nomor urut (`00571`),
+  jadi NIB lengkap `30.05.02.10.00571` tetap ketemu; kalau ada lebih dari satu,
+  petugas memilih. NIB yang lebih lengkap yang dipakai di formulir.
+- Desa dicocokkan lewat kode kecamatan Kemendagri lalu nama desa. Yang tidak
+  ketemu dilaporkan, tidak ditebak.
+- Isian kosong di PHPT tidak mengosongkan isian di sini. Riwayat penguasaan
+  hanya diisi bila barisnya masih kosong.
+- Jenis hak dari kode layanan PHPT: `HM …` → HM, `HGB/HBG …` → HGB, `HP …` → HP,
+  `HW …` → WAKAF. HGU tidak punya padanan.
+
+Setelan di `.env` (lihat `.env.contoh`): `SINKRON_URL` alamat laravel_app,
+`SINKRON_KUNCI` sama dengan `SINKRON_API_KEY` di `.env` laravel_app. Kosong =
+kartunya tidak muncul. Sisi Laravel: `GET /api/sinkron/tanah?nib=…`
+(`app/Http/Controllers/Api/SinkronTanahController.php`).
+
 ## Memasukkan data lama
 
 Klik dua kali **`impor.bat`**. Dua sumber diambil sekaligus:

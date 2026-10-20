@@ -7,7 +7,7 @@ import os
 import re
 import urllib.parse as up
 
-from . import db, izin, jalur, pemeliharaan, pradaftar, util, wilayah
+from . import db, izin, jalur, pemeliharaan, pradaftar, sinkron, util, wilayah
 from . import susun_kelengkapan as SUSUN
 from .dokumen import foto as foto_lapang, konteks, templat
 
@@ -724,6 +724,30 @@ def _isi_pendapat(p=None):
             f'placeholder="Diwakili oleh (Ps. 139 ayat 3)"></div>')
 
 
+def _kartu_sinkron(untuk, boleh_ubah=True, k=None):
+    """Kartu tarik data dari aplikasi PHPT (laravel_app) lewat NIB — app.js
+    (pasangSinkron) yang mengisikan hasilnya ke formulir. Kotak NIB-nya
+    sengaja tanpa name: yang tersimpan tetap kolom NIB milik formulir."""
+    if not boleh_ubah or not sinkron.aktif(k):
+        return ""
+    apa = ("pemohon dan letak tanah" if untuk == "pradaftar"
+           else "pemohon, kuasa, bidang tanah, dan riwayat penguasaan")
+    return f"""<div class="kartu" data-sinkron="{untuk}"><h2>Ambil dari aplikasi PHPT</h2>
+<div class="badan">
+<p class="petunjuk" style="margin-top:0">Data {apa} yang sudah diinput di aplikasi
+pengecekan berkas (PHPT) disalin ke formulir ini berdasarkan NIB — tidak perlu diketik
+ulang. Belum tersimpan sebelum <b>Simpan</b> ditekan.</p>
+<div class="grid g3">
+  <div><label for="f_sinkron_nib">NIB</label>
+    <input id="f_sinkron_nib" data-sinkron-nib autocomplete="off"
+           placeholder="mis. 30.05.02.10.00571 atau 00571"></div>
+  <div style="align-self:end"><button type="button" class="btn utama" data-sinkron-ambil>
+    Ambil data</button></div>
+</div>
+<div data-sinkron-hasil aria-live="polite" style="margin-top:.6rem"></div>
+</div></div>"""
+
+
 def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
                  boleh_ubah=True):
     """d = dict berkas hasil konteks.muat, atau None untuk berkas baru.
@@ -753,7 +777,7 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
                    for r in ref["panitia"]]
 
     # ---- panel: berkas
-    p_berkas = f"""<div class="kartu"><h2>Identitas berkas</h2><div class="badan">
+    p_berkas = _kartu_sinkron("berkas", boleh_ubah, k) + f"""<div class="kartu"><h2>Identitas berkas</h2><div class="badan">
 <div class="grid g3">
   {kotak("Jenis hak dimohon", "jenis_hak_dimohon", hak_pilihan, d["jenis_hak_dimohon"],
          petunjuk="menentukan template yang dipakai; isian khusus jenis hak "
@@ -1719,7 +1743,7 @@ pemohon membatalkan permohonannya. Isinya tetap tersimpan.</p>
     return terima + cetak + tutup
 
 
-def halaman_pradaftar_form(pengguna, d, ref, pesan=None, boleh_ubah=True):
+def halaman_pradaftar_form(pengguna, d, ref, pesan=None, boleh_ubah=True, k=None):
     """d = hasil pradaftar.muat, atau None untuk pradaftar baru."""
     baru = d is None
     if baru:
@@ -1743,7 +1767,7 @@ def halaman_pradaftar_form(pengguna, d, ref, pesan=None, boleh_ubah=True):
         f'{" selected" if str(r["id"]) == str(d.get("desa_id") or "") else ""}>'
         f'{e(r["jenis"])} {e(r["nama"])}</option>' for r in ref["desa"])
 
-    p_pemohon = f"""<div class="kartu"><h2>Permohonan</h2><div class="badan">
+    p_pemohon = _kartu_sinkron("pradaftar", boleh_ubah, k) + f"""<div class="kartu"><h2>Permohonan</h2><div class="badan">
 <div class="grid g3">
   {kotak("Jenis hak dimohon", "jenis_hak", hak_pilihan, d["jenis_hak"],
          petunjuk="menentukan daftar kelengkapan mana yang dipakai")}
@@ -3284,7 +3308,48 @@ referensi, template, dan pengelolaan akun diurus admin.</p></div></div>"""
     return layout("Pengaturan", isi, pengguna, "/pengaturan", pesan)
 
 
-def halaman_pengaturan(pengguna, peng, daftar_pengguna, pesan=None, ringkas_simpan=None):
+def _kartu_phpt(phpt):
+    """Alamat dan kunci API aplikasi PHPT (laravel_app) untuk tarik data lewat NIB.
+    Kunci tersimpan tidak pernah dicetak ke halaman; isiannya selalu kosong."""
+    phpt = phpt or {}
+    if phpt.get("url"):
+        sumber = ""
+    elif phpt.get("url_env"):
+        sumber = (f"Sekarang memakai alamat dari berkas .env: <b>{e(phpt['url_env'])}</b>. "
+                  "Isi di sini untuk menggantinya.")
+    else:
+        sumber = "Belum diatur — kartu \"Ambil dari aplikasi PHPT\" tidak muncul di formulir."
+    if phpt.get("ada_kunci"):
+        ket_kunci = "kunci tersimpan; kosongkan bila tidak diganti"
+    elif phpt.get("kunci_env"):
+        ket_kunci = "sekarang memakai kunci dari .env; isi untuk menggantinya"
+    else:
+        ket_kunci = "sama dengan SINKRON_API_KEY di .env laravel_app"
+    hapus = ('<label style="display:flex;gap:.4rem;align-items:center;margin-top:.6rem">'
+             '<input type="checkbox" name="hapus_kunci" value="1" style="width:auto"> '
+             'Hapus kunci API yang tersimpan</label>' if phpt.get("ada_kunci") else "")
+    return f"""<div class="kartu"><h2>Aplikasi PHPT</h2><div class="badan">
+<p class="petunjuk" style="margin-bottom:.8rem">Dipakai kartu <b>Ambil dari aplikasi
+PHPT</b> di formulir Berkas dan Pradaftar untuk menarik data pemohon dan bidang tanah
+berdasarkan NIB. Hanya admin yang dapat mengubahnya.</p>
+{f'<div class="pesan ingat" style="margin:0 0 .8rem"><div>{sumber}</div></div>' if sumber else ""}
+<form method="post" action="/pengaturan/sinkron"><div class="grid g2">
+  {bidang("Alamat aplikasi PHPT", "url", phpt.get("url"), "url",
+          "alamat dasarnya saja, mis. http://192.168.1.10:8000 — kosongkan untuk "
+          "memakai .env atau mematikan sinkron",
+          atribut='placeholder="http://192.168.1.10:8000" autocomplete="off"')}
+  {bidang("Kunci API", "kunci", "", "password", ket_kunci,
+          atribut='autocomplete="new-password"')}
+</div>{hapus}
+<div style="display:flex;gap:.5rem;margin-top:.8rem">
+  <button class="btn utama" name="aksi" value="simpan">Simpan</button>
+  <button class="btn" name="aksi" value="uji">Simpan &amp; uji sambungan</button>
+</div></form>
+</div></div>"""
+
+
+def halaman_pengaturan(pengguna, peng, daftar_pengguna, pesan=None, ringkas_simpan=None,
+                       phpt=None):
     if not izin.admin(pengguna):
         return _pengaturan_petugas(pengguna, pesan)
 
@@ -3295,7 +3360,7 @@ def halaman_pengaturan(pengguna, peng, daftar_pengguna, pesan=None, ringkas_simp
     isi_peng = "".join(
         bidang(kunci.replace("_", " ").title(), f"set_{kunci}", nilai,
                petunjuk=PETUNJUK_PENGATURAN.get(kunci, ""))
-        for kunci, nilai in peng.items())
+        for kunci, nilai in peng.items() if not kunci.startswith("sinkron_"))
 
     p_kantor = f"""<div class="kartu"><h2>Identitas kantor dan pejabat</h2><div class="badan">
 <p class="petunjuk" style="margin-bottom:.8rem">Dipakai di kop dan tanda tangan semua
@@ -3333,11 +3398,12 @@ dokumen. Yang diubah di sini langsung ikut pada dokumen yang dicetak berikutnya.
                 'tidak tersedia</b></div></div>')
 
     isi = f"""<div class="judul"><div><h1>Pengaturan</h1>
-<p>Identitas kantor, penyimpanan, dan akun petugas.</p></div></div>
+<p>Identitas kantor, penyimpanan, sambungan PHPT, dan akun petugas.</p></div></div>
 {_tab("pengaturan", [("p-kantor", "Kantor"), ("p-penyimpanan", "Penyimpanan"),
-                     ("p-pengguna", "Pengguna")])}
+                     ("p-phpt", "PHPT"), ("p-pengguna", "Pengguna")])}
 <div class="panel" id="p-kantor">{p_kantor}</div>
 <div class="panel" id="p-penyimpanan">{p_simpan}</div>
+<div class="panel" id="p-phpt">{_kartu_phpt(phpt)}</div>
 <div class="panel" id="p-pengguna">{p_pengguna}</div>"""
     return layout("Pengaturan", isi, pengguna, "/pengaturan", pesan)
 

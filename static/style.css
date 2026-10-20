@@ -1052,3 +1052,6 @@ ol.susun.sibuk{opacity:.55;pointer-events:none}
   .dalam-2 .susun-isi{padding-left:1.4rem}
   .dalam-3 .susun-isi{padding-left:2.1rem}
 }
+
+/* isian yang baru diisi dari aplikasi PHPT (app.js: pasangSinkron) */
+.tersinkron{background:var(--aksen-lembut)!important;border-color:var(--aksen-garis)!important}
