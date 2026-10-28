@@ -1,0 +1,23 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "KirimPerintahKeServerSipantas",
+      "Effect": "Allow",
+      "Action": "ssm:SendCommand",
+      "Resource": [
+        "arn:aws:ec2:<REGION>:<ID_AKUN>:instance/<ID_INSTANCE>",
+        "arn:aws:ssm:<REGION>::document/AWS-RunShellScript"
+      ]
+    },
+    {
+      "Sid": "BacaHasilPerintah",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:GetCommandInvocation",
+        "ssm:ListCommandInvocations"
+      ],
+      "Resource": "*"
+    }
+  ]
+}

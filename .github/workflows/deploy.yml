@@ -1,0 +1,128 @@
+# Uji setiap push dan pull request; kalau lolos dan cabangnya main, pasang ke server.
+#
+# Tanpa kunci AWS tersimpan di GitHub: Actions menukar token OIDC-nya dengan
+# kredensial sementara dari IAM role (lihat deploy/aws/ dan DEPLOY.md bagian 12).
+# Tanpa SSH juga: perintahnya dikirim lewat SSM Run Command ke instance EC2,
+# yang lalu menjalankan deploy/perbarui.sh seperti biasa.
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  uji:
+    name: Uji (${{ matrix.basis }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        basis: [sqlite, postgres]
+    services:
+      # Hanya dipakai baris matriks postgres; yang sqlite tidak menyentuhnya.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: panitia
+          POSTGRES_PASSWORD: panitia
+          POSTGRES_DB: panitia_a_uji
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U panitia"
+          --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      TZ: Asia/Makassar
+      DB_URL: ${{ matrix.basis == 'postgres' && 'postgresql://panitia:panitia@127.0.0.1:5432/panitia_a_uji' || '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      # Sama dengan python3 bawaan Ubuntu 24.04 di server.
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: python -m pip install -r requirements.txt
+
+      # uji_konteks, uji_dokumen, dan uji_hak_pakai butuh data/berkas.db dan
+      # uji/emas/ yang berisi data pemohon sungguhan, jadi tidak ada di sini.
+      # Keduanya tetap dijalankan di komputer pengembang lewat uji.bat penuh.
+      - name: Uji basis dan web
+        run: python -m unittest uji.uji_basis uji.uji_web -v
+
+  pasang:
+    name: Pasang ke server
+    needs: uji
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Environment "produksi" membatasi siapa yang boleh memakai role AWS-nya:
+    # trust policy hanya menerima token dari environment ini.
+    environment: produksi
+    # Jangan sampai dua pemasangan berjalan bersamaan di satu server.
+    concurrency:
+      group: pasang-produksi
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      id-token: write       # wajib untuk OIDC
+    env:
+      INSTANCE_ID: ${{ vars.EC2_INSTANCE_ID }}
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v5
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: sipantas-${{ github.run_id }}
+
+      - name: Jalankan perbarui.sh lewat SSM
+        id: kirim
+        run: |
+          # SSM menjalankan perintah sebagai root; perbarui.sh harus jalan sebagai
+          # ubuntu supaya git memakai deploy key dan berkasnya tetap milik ubuntu.
+          jq -n --arg sha "$GITHUB_SHA" '{
+            commands: [
+              "set -eu",
+              "sudo -u ubuntu -H /srv/sipantas/deploy/perbarui.sh",
+              "TERPASANG=$(sudo -u ubuntu git -C /srv/sipantas rev-parse HEAD)",
+              ("echo \"Terpasang: $TERPASANG (diminta: " + $sha + ")\""),
+              "for i in $(seq 1 15); do curl -fsS -o /dev/null http://127.0.0.1:8002/masuk && { echo \"Layanan menjawab\"; exit 0; }; sleep 2; done",
+              "echo \"GAGAL: http://127.0.0.1:8002/masuk tidak menjawab\" >&2; journalctl -u sipantas -n 30 --no-pager >&2; exit 1"
+            ],
+            executionTimeout: ["900"]
+          }' > parameter.json
+
+          ID=$(aws ssm send-command \
+            --instance-ids "$INSTANCE_ID" \
+            --document-name AWS-RunShellScript \
+            --comment "SIPANTAS ${GITHUB_SHA::7} (run ${GITHUB_RUN_ID})" \
+            --parameters file://parameter.json \
+            --query Command.CommandId --output text)
+          echo "id=$ID" >> "$GITHUB_OUTPUT"
+          echo "Perintah SSM: $ID"
+
+      - name: Tunggu hasilnya
+        run: |
+          ID='${{ steps.kirim.outputs.id }}'
+          # aws ssm wait menyerah setelah 100 detik; cadangan + pip bisa lebih lama.
+          for i in $(seq 1 180); do
+            STATUS=$(aws ssm get-command-invocation --command-id "$ID" \
+              --instance-id "$INSTANCE_ID" --query Status --output text 2>/dev/null || echo Pending)
+            case "$STATUS" in
+              Pending|InProgress|Delayed) sleep 5 ;;
+              *) break ;;
+            esac
+          done
+
+          aws ssm get-command-invocation --command-id "$ID" --instance-id "$INSTANCE_ID" \
+            --query StandardOutputContent --output text
+          echo "----- stderr -----"
+          aws ssm get-command-invocation --command-id "$ID" --instance-id "$INSTANCE_ID" \
+            --query StandardErrorContent --output text
+
+          echo "Status: $STATUS"
+          [ "$STATUS" = "Success" ]

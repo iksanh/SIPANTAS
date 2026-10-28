@@ -8,9 +8,11 @@ admin.
 Menambah pengguna dan mengganti kata sandi ada di rute/auth.py — keduanya
 menyentuh kredensial, jadi dikumpulkan bersama masuk/keluar.
 """
+from urllib.parse import quote
+
 from flask import Blueprint, g, redirect, request
 
-from .. import db, izin, kabar, pemeliharaan, web
+from .. import db, izin, kabar, pemeliharaan, sinkron, web
 
 bp = Blueprint("pengaturan", __name__)
 
@@ -24,7 +26,18 @@ def halaman():
     peng = {r["kunci"]: r["nilai"] for r in g.k.execute("SELECT * FROM pengaturan")}
     daftar = [dict(r) for r in g.k.execute("SELECT * FROM pengguna ORDER BY id")]
     return web.halaman_pengaturan(g.pengguna, peng, daftar, kabar.pesan(),
-                                  pemeliharaan.ringkas())
+                                  pemeliharaan.ringkas(), _phpt(peng))
+
+
+def _phpt(peng):
+    """Keadaan setelan PHPT untuk kartunya. Kunci API tidak pernah dikirim
+    balik ke peramban — yang ditampilkan hanya ada atau tidaknya."""
+    return {
+        "url": peng.get(sinkron.KUNCI_URL) or "",
+        "ada_kunci": bool((peng.get(sinkron.KUNCI_API) or "").strip()),
+        "url_env": sinkron.konfigurasi.ambil("SINKRON_URL", "").strip(),
+        "kunci_env": bool(sinkron.konfigurasi.ambil("SINKRON_KUNCI", "").strip()),
+    }
 
 
 @bp.post("/pengaturan")
@@ -33,11 +46,52 @@ def simpan():
     """Semua isian berawalan set_ masuk ke tabel pengaturan apa adanya —
     menambah isian di web.py tidak perlu menyentuh rute ini."""
     for nama in request.form:
-        if nama.startswith("set_"):
+        # Setelan PHPT punya rutenya sendiri (diperiksa dulu sebelum disimpan).
+        if nama.startswith("set_") and not nama.startswith("set_sinkron_"):
             g.k.execute(db.upsert("pengaturan", "kunci,nilai", kunci="kunci"),
                         (nama[4:], request.form[nama]))
     g.k.commit()
     return redirect("/pengaturan?pesan=pengaturan#p-kantor", 303)
+
+
+@bp.post("/pengaturan/sinkron")
+@izin.perlu_admin
+def simpan_sinkron():
+    """Alamat dan kunci API aplikasi PHPT untuk tarik data lewat NIB.
+
+    Kunci yang dikosongkan tidak menghapus kunci lama — isiannya memang selalu
+    kosong karena kuncinya tidak pernah ditampilkan. Menghapusnya lewat
+    centang tersendiri. Tombol "Simpan & uji" langsung mencoba sambungannya.
+    """
+    f = request.form
+    tujuan = "/pengaturan#p-phpt"
+    url = (f.get("url") or "").strip()
+    if url:
+        try:
+            url = sinkron.periksa_url(url)
+        except ValueError as ex:
+            return redirect(kabar.ke(tujuan, "galat=" + quote(str(ex))), 303)
+
+    def tulis(kunci, nilai):
+        g.k.execute(db.upsert("pengaturan", "kunci,nilai", kunci="kunci"), (kunci, nilai))
+
+    tulis(sinkron.KUNCI_URL, url)
+    kunci = (f.get("kunci") or "").strip()
+    if f.get("hapus_kunci"):
+        tulis(sinkron.KUNCI_API, "")
+    elif kunci:
+        tulis(sinkron.KUNCI_API, kunci)
+    g.k.commit()
+
+    if f.get("aksi") != "uji":
+        return redirect(kabar.ke(tujuan, "pesan=pengaturan_phpt"), 303)
+    try:
+        sinkron.ambil("00000", g.k)
+    except sinkron.SinkronGagal as ex:
+        return redirect(kabar.ke(tujuan, "galat=" + quote(
+            "Tersimpan, tetapi uji sambungan gagal: " + str(ex))), 303)
+    return redirect(kabar.ke(tujuan, "baik=" + quote(
+        "Tersimpan. Aplikasi PHPT tersambung dan kunci API diterima.")), 303)
 
 
 @bp.post("/pemeliharaan")

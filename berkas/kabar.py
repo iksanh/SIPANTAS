@@ -33,6 +33,8 @@ PESAN = {
                                "lain yang melakukannya, supaya tidak ada keadaan tanpa "
                                "admin sama sekali."),
     "pengaturan": ("baik", "<b>Pengaturan disimpan.</b>"),
+    "pengaturan_phpt": ("baik", "<b>Setelan aplikasi PHPT disimpan.</b> Kartu "
+                                "\"Ambil dari aplikasi PHPT\" mengikuti setelan ini."),
     "referensi": ("baik", "<b>Data referensi diperbarui.</b>"),
     "butir": ("baik", "<b>Butir disimpan.</b> Berlaku untuk pradaftar yang dibuka "
                       "sesudah ini."),

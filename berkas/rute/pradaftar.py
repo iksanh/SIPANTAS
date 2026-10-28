@@ -51,7 +51,7 @@ def daftar():
 @bp.get("/pradaftar/baru")
 def formulir_kosong():
     return web.halaman_pradaftar_form(g.pengguna, None, referensi.semua(g.k),
-                                      kabar.pesan())
+                                      kabar.pesan(), k=g.k)
 
 
 @bp.get("/pradaftar/<int:pid>")
@@ -62,7 +62,7 @@ def satu(pid):
         return redirect("/pradaftar", 303)
     return web.halaman_pradaftar_form(
         g.pengguna, d, referensi.semua(g.k), kabar.pesan(),
-        boleh_ubah=_boleh_ubah(pid, pemilik, d["status"]))
+        boleh_ubah=_boleh_ubah(pid, pemilik, d["status"]), k=g.k)
 
 
 # ------------------------------------------------------------------- simpan

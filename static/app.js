@@ -1297,6 +1297,137 @@
   }
 
   /* ------------- peringatan perubahan belum tersimpan ------------- */
+  /* ------------- ambil data dari aplikasi PHPT lewat NIB ------------- */
+  /* Kartu [data-sinkron] di formulir Berkas/Pradaftar. Server menjawab isian
+     yang namanya sama persis dengan nama medan formulir, jadi di sini cukup
+     diisikan. Yang dari PHPT kosong tidak mengosongkan isian yang ada. */
+  function pasangSinkron() {
+    var kartu = document.querySelector("[data-sinkron]");
+    if (!kartu) return;
+    var form = kartu.closest("form");
+    var nib = kartu.querySelector("[data-sinkron-nib]");
+    var tombol = kartu.querySelector("[data-sinkron-ambil]");
+    var wadah = kartu.querySelector("[data-sinkron-hasil]");
+    if (!form || !nib || !tombol || !wadah) return;
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+      });
+    }
+    function pesan(kelas, html) {
+      wadah.innerHTML = '<div class="pesan ' + kelas + '" style="margin:0"><div>' + html + "</div></div>";
+    }
+    function picu(el, jenis) { el.dispatchEvent(new Event(jenis, { bubbles: true })); }
+
+    function isiMedan(nama, nilai) {
+      var el = form.elements[nama];
+      if (!el || el.disabled || nilai === null || nilai === undefined || nilai === "") return 0;
+      nilai = String(nilai);
+      if (el.tagName === "SELECT") {
+        var ada = Array.prototype.some.call(el.options, function (o) { return o.value === nilai; });
+        if (!ada) return 0;
+      }
+      if (el.value === nilai) return 0;
+      el.value = nilai;
+      el.classList.add("tersinkron");
+      picu(el, "input");
+      return 1;
+    }
+
+    function isiWilayah(isian) {
+      var kec = document.getElementById("f_kecamatan");
+      var desa = document.getElementById("f_desa");
+      if (!desa || !isian.desa_id) return 0;
+      if (kec && isian.kecamatan && kec.value !== String(isian.kecamatan)) {
+        kec.value = String(isian.kecamatan);
+        picu(kec, "change");                 // daftar desanya disusun ulang
+        kec.classList.add("tersinkron");
+      }
+      if (desa.value === String(isian.desa_id)) return 0;
+      desa.value = String(isian.desa_id);
+      desa.dataset.terpilih = String(isian.desa_id);
+      desa.classList.add("tersinkron");
+      return 1;
+    }
+
+    /* Riwayat hanya diisi bila barisnya masih kosong — riwayat yang sudah
+       diketik petugas tidak ditimpa. */
+    function isiRiwayat(poin) {
+      var w = form.querySelector('[data-dinamis="riwayat"]');
+      if (!w || !poin || !poin.length) return "";
+      var terisi = Array.prototype.some.call(w.querySelectorAll('[name="riwayat_uraian"]'),
+        function (t) { return t.value.trim() !== ""; });
+      if (terisi) return "Riwayat penguasaan tidak diganti karena sudah terisi.";
+      var contoh = w.querySelector("template");
+      if (!contoh) return "";
+      w.querySelectorAll(".baris").forEach(function (b) { b.remove(); });
+      poin.forEach(function (p) {
+        w.appendChild(document.importNode(contoh.content, true));
+        var t = w.lastElementChild.querySelector('[name="riwayat_uraian"]');
+        if (t) { t.value = p; t.classList.add("tersinkron"); }
+      });
+      nomori(w);
+      return poin.length + " baris riwayat penguasaan diisi.";
+    }
+
+    function terapkan(h) {
+      var n = 0;
+      Object.keys(h.isian).forEach(function (k) {
+        if (k !== "kecamatan" && k !== "desa_id") n += isiMedan(k, h.isian[k]);
+      });
+      n += isiWilayah(h.isian);
+      var catatan = isiRiwayat(h.riwayat);
+      picu(form, "change");                  // supaya penjaga "belum disimpan" tahu
+      var daftar = (h.peringatan || []).map(function (p) { return "<li>" + esc(p) + "</li>"; }).join("");
+      pesan(daftar ? "ingat" : "baik",
+        "<b>" + n + " isian diisi dari PHPT" + (h.registrasi ? " (" + esc(h.registrasi) + ")" : "") +
+        ".</b> " + esc(catatan) + " Periksa isian yang berwarna, lalu tekan <b>Simpan</b>." +
+        (daftar ? '<ul style="margin:.4rem 0 0 1.1rem">' + daftar + "</ul>" : ""));
+    }
+
+    function pilihan(hasil) {
+      pesan("ingat", "<b>Ada " + hasil.length + " data dengan NIB itu.</b> Pilih yang benar:" +
+        '<div style="display:grid;gap:.35rem;margin-top:.5rem">' +
+        hasil.map(function (h, i) {
+          return '<button type="button" class="btn kecil" style="justify-content:flex-start;text-align:left"' +
+            ' data-sinkron-pilih="' + i + '">' + esc(h.ringkas) + "</button>";
+        }).join("") + "</div>");
+      wadah.querySelectorAll("[data-sinkron-pilih]").forEach(function (b) {
+        b.addEventListener("click", function () { terapkan(hasil[+b.dataset.sinkronPilih]); });
+      });
+    }
+
+    function ambil() {
+      var q = nib.value.trim();
+      if (!q) { nib.focus(); return; }
+      tombol.disabled = true;
+      tombol.classList.add("sibuk");
+      pesan("", "Menghubungi aplikasi PHPT…");
+      fetch("/sinkron/nib?untuk=" + encodeURIComponent(kartu.dataset.sinkron) +
+            "&nib=" + encodeURIComponent(q),
+            { headers: { Accept: "application/json" }, credentials: "same-origin" })
+        .then(function (r) {
+          if (r.status === 401) throw new Error("Sesi habis — muat ulang halaman lalu masuk lagi.");
+          return r.json().catch(function () { throw new Error("Jawaban server tidak terbaca."); });
+        })
+        .then(function (j) {
+          if (j.galat) { pesan("galat", esc(j.galat)); return; }
+          var hasil = j.hasil || [];
+          if (!hasil.length) pesan("ingat", "Tidak ada data dengan NIB <b>" + esc(q) + "</b> di aplikasi PHPT.");
+          else if (hasil.length === 1) terapkan(hasil[0]);
+          else pilihan(hasil);
+        })
+        .catch(function (ex) { pesan("galat", esc(ex.message || ex)); })
+        .then(function () { tombol.disabled = false; tombol.classList.remove("sibuk"); });
+    }
+
+    tombol.addEventListener("click", ambil);
+    nib.addEventListener("keydown", function (ev) {
+      if (ev.key === "Enter") { ev.preventDefault(); ambil(); }   // jangan kirim formulirnya
+    });
+  }
+
   /* Pada formulir bertanda data-jaga-ubah: meninggalkan halaman sesudah
      mengubah sesuatu memunculkan pertanyaan bawaan peramban. Menyimpan
      (mengirim formulirnya) tentu tidak ditanya. */
@@ -1334,6 +1465,7 @@
     pasangPeriksa();
     pasangSurat();
     pasangSusun();
+    pasangSinkron();
     pasangJagaUbah();
   });
 })();

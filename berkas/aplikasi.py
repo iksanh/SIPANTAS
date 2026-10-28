@@ -17,8 +17,8 @@ from urllib.parse import quote, urlparse
 from flask import Flask, Response, abort, g, redirect, request
 
 from . import db, izin, jalur, sesi, web
-from .rute import (auth, berkas, pengaturan, pradaftar, referensi, template,
-                   unduhan)
+from .rute import (auth, berkas, pengaturan, pradaftar, referensi, sinkron,
+                   template, unduhan)
 
 # Endpoint yang boleh dibuka tanpa masuk.
 BEBAS = {"auth.halaman_masuk", "auth.masuk", "static"}
@@ -68,7 +68,7 @@ def buat_aplikasi():
             g.tamu_baru = g.csrf != request.cookies.get(sesi.KUKI_TAMU)
 
         if not (g.pengguna or request.endpoint in BEBAS):
-            if "/bagian/" in request.path:
+            if "/bagian/" in request.path or request.path.startswith("/sinkron/"):
                 # Permintaan kartu lipat dari app.js — jawab apa adanya, jangan
                 # kirimi halaman masuk yang akan ditelan mentah ke dalam kartu.
                 return Response("sesi habis", 401,
@@ -181,4 +181,5 @@ def buat_aplikasi():
     app.register_blueprint(template.bp)
     app.register_blueprint(pengaturan.bp)
     app.register_blueprint(unduhan.bp)
+    app.register_blueprint(sinkron.bp)
     return app
