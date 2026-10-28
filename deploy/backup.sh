@@ -3,7 +3,9 @@
 # keluaran/ dan pratinjau/ tidak ikut: keduanya dirakit ulang dari basis data.
 set -euo pipefail
 
-AKAR="${AKAR:-/srv/sipantas}"
+# Bawaan: folder repo tempat skrip ini berada (induk dari deploy/), jadi tetap
+# benar di /srv/sipantas maupun /srv/sipantas/SIPANTAS.
+AKAR="${AKAR:-$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)}"
 DB_PATH="${DB_PATH:-$AKAR/data/berkas.db}"
 TUJUAN_S3="${TUJUAN_S3:-s3://cadangan-bpn-bonbol/sipantas}"
 SIMPAN_HARI="${SIMPAN_HARI:-30}"
