@@ -208,7 +208,10 @@ CREATE TABLE IF NOT EXISTS pihak_badan_hukum (
   bidang_usaha TEXT, notaris_kota TEXT, pengesahan_oleh TEXT,
   akta_ubah_notaris TEXT, akta_ubah_notaris_kota TEXT,
   ubah_sah_nomor TEXT, ubah_sah_tanggal TEXT, nib_tanggal TEXT,
-  csr_akta_nomor TEXT, csr_akta_tanggal TEXT, csr_notaris TEXT, csr_notaris_kota TEXT
+  csr_akta_nomor TEXT, csr_akta_tanggal TEXT, csr_notaris TEXT, csr_notaris_kota TEXT,
+  -- instansi pemerintah pemohon Hak Pakai selama dipergunakan (jenis hak HPTP):
+  -- dasar pembentukannya dan golongannya menurut Pasal 111 ayat (3) Permen 18/2021
+  dasar_pembentukan TEXT, jenis_instansi TEXT
 );
 CREATE TABLE IF NOT EXISTS bidang_tanah (
   berkas_id INTEGER PRIMARY KEY REFERENCES berkas(id) ON DELETE CASCADE,
@@ -221,7 +224,10 @@ CREATE TABLE IF NOT EXISTS bidang_tanah (
   -- dua kalimat telaah di bawah ini dihitung sendiri bila dikosongkan;
   -- diisi hanya kalau kalimat bawaannya perlu ditulis lain
   uraian_penguasaan_fisik TEXT,
-  uraian_selisih_luas TEXT
+  uraian_selisih_luas TEXT,
+  -- dipakai tata naskah Hak Pakai Tanah Pemerintah: «tanah Pekarangan»,
+  -- «keadaan tanahnya terdapat bangunan di atasnya»
+  jenis_tanah TEXT, keadaan_tanah TEXT
 );
 CREATE TABLE IF NOT EXISTS riwayat_perolehan (
   id INTEGER PRIMARY KEY,
@@ -489,6 +495,15 @@ DOKUMEN_BAKU_HAK = {
         ("bersedia_diaudit", "Surat Pernyataan Bersedia Diaudit",
          "Surat Pernyataan bersedia diaudit", ""),
     ],
+    # Hak Pakai Tanah Pemerintah. Kartu Inventaris Barang biasanya lebih dari
+    # satu (satu per bidang), jadi tidak dijadikan slot: diisi di Dokumen tambahan.
+    "HPTP": [
+        ("penguasaan_aset", "Surat Pernyataan Penguasaan Aset",
+         "Surat Pernyataan Penguasaan Aset",
+         "dibuat pejabat pengelola barang milik negara/daerah"),
+        ("sptjm", "Surat Pernyataan Tanggung Jawab Mutlak",
+         "Surat Pernyataan Tanggung Jawab Mutlak", ""),
+    ],
 }
 
 
@@ -590,6 +605,14 @@ JENIS_HAK = [
      "perorangan,badan_hukum,instansi",
      "baru,perpanjangan,pembaruan",
      "Pasal 111 & 113 Permen ATR/BPN 18/2021", "HP", "hp", 3),
+    # Hak Pakai selama dipergunakan untuk instansi pemerintah (Pasal 111 ayat (3)):
+    # tanpa jangka waktu, tanpa BPHTB, tata naskahnya sendiri (bap/risalah/sk-hptp).
+    # Nomor SK-nya tetap berkode HP, jadi berurutan bersama Hak Pakai biasa.
+    ("HPTP", "Hak Pakai Tanah Pemerintah", 0, None, None, None, 0,
+     "instansi",
+     "baru",
+     "Pasal 111 ayat (3) Permen ATR/BPN 18/2021 (Hak Pakai selama dipergunakan)",
+     "HP", "hptp", 3),
     ("HPL", "Hak Pengelolaan", 0, None, None, None, 1,
      "instansi",
      "baru",
@@ -604,6 +627,18 @@ JENIS_HAK = [
      "perorangan,badan_hukum",
      "baru",
      "PP 18/2021 BAB V", "HMSRS", "", 6),
+]
+
+# Disisipkan migrasi() ke basis data yang ref_jenis_hak-nya sudah terisi.
+JENIS_HAK_SUSULAN = ("HPTP",)
+
+# Golongan instansi penerima Hak Pakai selama dipergunakan, Pasal 111 ayat (3)
+# Permen ATR/BPN 18/2021: (kode, huruf, label)
+JENIS_INSTANSI = [
+    ("pusat", "a", "Instansi Pemerintah Pusat"),
+    ("daerah", "b", "Pemerintah Daerah"),
+    ("desa", "c", "Pemerintah Desa"),
+    ("asing", "d", "Perwakilan negara asing dan perwakilan badan internasional"),
 ]
 
 # Sepuluh butir wajib surat pernyataan penguasaan fisik - Pasal 54 ayat (1) huruf d
@@ -648,6 +683,11 @@ DOKUMEN_SYARAT = [
     # sebagai baris yang harus ada, cukup diingatkan
     ("WAKAF", "*", "pemohon", "Fotokopi KTP dan Kartu Keluarga Wakif", 0,
      "Permen ATR/BPN 2/2017"),
+    # tanah instansi pemerintah: aset barang milik negara/daerah
+    ("HPTP", "*", "tanah", "Kartu Inventaris Barang (KIB) / bukti pencatatan aset", 1,
+     "Peraturan Bersama Menkeu & Kepala BPN 186/PMK.06/2009 - 24/2009"),
+    ("HPTP", "*", "pemohon", "Surat Pernyataan Penguasaan Aset", 0, "praktik Kantah"),
+    ("HPTP", "*", "pemohon", "Surat Pernyataan Tanggung Jawab Mutlak", 0, "praktik Kantah"),
 ]
 
 
@@ -961,6 +1001,22 @@ def migrasi(k):
                   "WHERE kode=?", (kode_sk, varian, kode))
     # Namanya ikut tercetak di judul SK; 'Wakaf' saja bukan sebutan haknya.
     k.execute("UPDATE ref_jenis_hak SET nama='Hak Wakaf' WHERE kode='WAKAF' AND nama='Wakaf'")
+    # Jenis hak yang lahir sesudah basis datanya terisi. Hanya yang disebut di sini
+    # yang disisipkan: jenis hak lain yang sengaja dihapus admin tidak dihidupkan lagi.
+    # Basis data baru (tabelnya masih kosong) dibiarkan: seed() mengisi semuanya,
+    # dan seed() melewati tabel yang sudah berisi.
+    sudah_terisi = k.execute("SELECT 1 FROM ref_jenis_hak LIMIT 1").fetchone()
+    for baris in JENIS_HAK:
+        if sudah_terisi and baris[0] in JENIS_HAK_SUSULAN and not k.execute(
+                "SELECT 1 FROM ref_jenis_hak WHERE kode=?", (baris[0],)).fetchone():
+            k.execute("INSERT INTO ref_jenis_hak (kode,nama,ada_jangka_waktu,jangka_maks,"
+                      "perpanjangan_maks,pembaruan_maks,wajib_uang_pemasukan,subjek_boleh,"
+                      "kegiatan_boleh,dasar_subjek,kode_sk,varian_template,urut) "
+                      "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", baris)
+    for kolom in ("dasar_pembentukan", "jenis_instansi"):
+        _tambah_kolom(k, "pihak_badan_hukum", kolom)
+    for kolom in ("jenis_tanah", "keadaan_tanah"):
+        _tambah_kolom(k, "bidang_tanah", kolom)
     # Sesi lama belum punya token CSRF. Diisikan satu per satu, bukan satu
     # nilai untuk semua: token yang sama di semua sesi sama saja dengan tidak
     # ada penjagaan.

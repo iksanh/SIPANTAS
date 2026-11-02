@@ -79,6 +79,65 @@ sebagai titik-titik.</p>
 {baris(0, 4)}{baris(4, 8)}{baris(8, 11)}{baris(11, 15)}"""
 
 
+# Medan badan hukum yang juga dipakai kartu instansi pemerintah, dan medan
+# khusus instansi. Keduanya dicetak tata naskah Hak Pakai Tanah Pemerintah.
+_BH_DIPAKAI_INSTANSI = ("kedudukan", "wakil_nama", "wakil_jabatan", "wakil_nik")
+_KOLOM_INSTANSI = ("dasar_pembentukan", "jenis_instansi")
+_BH_DASAR = ("bentuk", "kedudukan", "npwp", "akta_nomor", "akta_tanggal", "notaris", "nib",
+             "pengesahan_nomor", "pengesahan_tanggal", "wakil_nama", "wakil_jabatan")
+
+
+def _tersembunyi(nilai):
+    return "".join(f'<input type="hidden" name="{e(n)}" value="{e(v)}">'
+                   for n, v in nilai.items())
+
+
+def _kartu_instansi(bh):
+    """Kartu tab Pihak untuk berkas Hak Pakai Tanah Pemerintah, pengganti kartu
+    badan hukum. Medan badan hukum yang tidak dipakai tetap terkirim tersembunyi,
+    supaya isinya tidak hilang bila jenis haknya kelak diganti."""
+    g = lambda kol: bh.get(kol) or ""
+    sisa = {f"bh_{kol}": g(kol) for kol in
+            _BH_DASAR + tuple(x[0] for x in db.KOLOM_BH_RINCIAN)
+            if kol not in _BH_DIPAKAI_INSTANSI}
+    golongan = [(kode, f"{huruf}. {label}") for kode, huruf, label in db.JENIS_INSTANSI]
+    return f"""<div class="kartu"><h2>Instansi pemerintah</h2><div class="badan">
+<p class="petunjuk" style="margin:0 0 .6rem">Hak Pakai selama dipergunakan (Pasal 111
+ayat (3) Permen ATR/BPN 18/2021). Nama instansi diisi di kartu Penerima hak; NIK, jenis
+kelamin, dan pekerjaan di sana boleh dikosongkan.</p>
+<div class="grid g2">
+  {kotak("Golongan instansi", "bh_jenis_instansi", golongan, g("jenis_instansi") or "daerah",
+         petunjuk="menentukan huruf Pasal 111 ayat (3) yang dicetak")}
+  {bidang("Kedudukan / alamat kantor", "bh_kedudukan", g("kedudukan"),
+          petunjuk="dicetak «berkedudukan di …» dan alamat «Kepada» SK")}
+</div>
+{area("Dasar pembentukan", "bh_dasar_pembentukan", g("dasar_pembentukan"),
+      "mis. Undang-Undang Nomor 6 Tahun 2003 tentang Pembentukan Kabupaten Bone Bolango "
+      "dan Kabupaten Pohuwato di Provinsi Gorontalo", baris=2)}
+<div class="grid g3" style="margin-top:.75rem">
+  {bidang("Pejabat yang mewakili", "bh_wakil_nama", g("wakil_nama"),
+          petunjuk="«… yang bertindak untuk dan atas nama instansi»")}
+  {bidang("Jabatan", "bh_wakil_jabatan", g("wakil_jabatan"), petunjuk="mis. Sekretaris Daerah")}
+  {bidang("NIK pejabat", "bh_wakil_nik", g("wakil_nik"))}
+</div>
+{_tersembunyi(sisa)}
+</div></div>"""
+
+
+def _isian_keadaan_tanah(d, t):
+    """Jenis dan keadaan tanah: hanya dipakai tata naskah Hak Pakai Tanah Pemerintah.
+    Pada jenis hak lain isinya ikut terkirim tersembunyi."""
+    nilai = {"jenis_tanah": t.get("jenis_tanah") or "", "keadaan_tanah": t.get("keadaan_tanah") or ""}
+    if not konteks.hak_pakai_pemerintah(d):
+        return _tersembunyi(nilai)
+    return f"""<div class="grid g2" style="margin-top:.75rem">
+  {bidang("Jenis tanah", "jenis_tanah", nilai["jenis_tanah"],
+          petunjuk="mis. Pekarangan — dicetak «atas sebidang tanah Pekarangan» di SK")}
+  {bidang("Keadaan tanah", "keadaan_tanah", nilai["keadaan_tanah"],
+          petunjuk="mis. terdapat bangunan di atasnya — dicetak di BAP")}
+</div>"""
+
+
 # Urutan pengisian berkas baru. Tiga langkah pertama wajib supaya berkasnya
 # berarti; tiga sisanya boleh menyusul, dan itu dikatakan terang-terangan
 # supaya petugas baru tidak merasa harus melengkapi semuanya sekaligus.
@@ -811,23 +870,10 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
         'Nazhir perseorangan paling sedikit 3 orang (Pasal 4 ayat (2) PP 42/2006); '
         'kalau Akta Ikrar Wakaf lama hanya menyebut satu Nazhir, isi sesuai aktanya.'
         '</div>' if ini_wakaf else "")
-    p_pihak = f"""<div class="kartu"><h2>{judul_penerima}</h2><div class="badan">
-<div class="grid g3">
-  {kotak("Jenis subjek", "penerima_jenis_subjek", SUBJEK, penerima.get("jenis_subjek", "perorangan"))}
-  {bidang("Nama", "penerima_nama", penerima.get("nama"), wajib=True)}
-  {bidang("NIK", "penerima_nik", penerima.get("nik"), petunjuk="16 digit angka")}
-</div>
-<div class="grid g3" style="margin-top:.75rem">
-  {bidang("Tempat, tanggal lahir", "penerima_ttl", penerima.get("ttl"))}
-  {kotak("Jenis kelamin", "penerima_jenis_kelamin",
-         [("Laki-laki", "Laki-laki"), ("Perempuan", "Perempuan")],
-         penerima.get("jenis_kelamin"), "- pilih -", "menentukan sapaan Sdr./Sdri.")}
-  {bidang("Pekerjaan", "penerima_pekerjaan", penerima.get("pekerjaan"))}
-</div>
-{area("Alamat", "penerima_alamat", penerima.get("alamat"), baris=2)}
-</div></div>
-
-<div class="kartu"><h2>Bila penerima hak adalah badan hukum</h2><div class="badan">
+    if konteks.hak_pakai_pemerintah(d):
+        kartu_subjek = _kartu_instansi(bh)
+    else:
+        kartu_subjek = f"""<div class="kartu"><h2>Bila penerima hak adalah badan hukum</h2><div class="badan">
 <div class="grid g3">
   {bidang("Bentuk badan", "bh_bentuk", bh.get("bentuk"), petunjuk="PT, Yayasan, Koperasi, …")}
   {bidang("Kedudukan", "bh_kedudukan", bh.get("kedudukan"))}
@@ -846,7 +892,25 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
   {bidang("Jabatan pengurus", "bh_wakil_jabatan", bh.get("wakil_jabatan"))}
 </div>
 {_rincian_bh_hak_pakai(d, bh)}
+{_tersembunyi({f"bh_{kol}": bh.get(kol) or "" for kol in _KOLOM_INSTANSI})}
+</div></div>"""
+    p_pihak = f"""<div class="kartu"><h2>{judul_penerima}</h2><div class="badan">
+<div class="grid g3">
+  {kotak("Jenis subjek", "penerima_jenis_subjek", SUBJEK, penerima.get("jenis_subjek", "perorangan"))}
+  {bidang("Nama", "penerima_nama", penerima.get("nama"), wajib=True)}
+  {bidang("NIK", "penerima_nik", penerima.get("nik"), petunjuk="16 digit angka")}
+</div>
+<div class="grid g3" style="margin-top:.75rem">
+  {bidang("Tempat, tanggal lahir", "penerima_ttl", penerima.get("ttl"))}
+  {kotak("Jenis kelamin", "penerima_jenis_kelamin",
+         [("Laki-laki", "Laki-laki"), ("Perempuan", "Perempuan")],
+         penerima.get("jenis_kelamin"), "- pilih -", "menentukan sapaan Sdr./Sdri.")}
+  {bidang("Pekerjaan", "penerima_pekerjaan", penerima.get("pekerjaan"))}
+</div>
+{area("Alamat", "penerima_alamat", penerima.get("alamat"), baris=2)}
 </div></div>
+
+{kartu_subjek}
 
 <div class="kartu"><h2>Kuasa</h2><div class="badan">
 <div class="grid g2">
@@ -917,6 +981,7 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
       t.get("kesesuaian") if t.get("kesesuaian") not in
       (None, "", "Sesuai", "Sesuai Bersyarat", "Tidak Sesuai") else "", baris=2,
       petunjuk="isi hanya bila kesesuaiannya terbagi per luasan")}
+{_isian_keadaan_tanah(d, t)}
 </div></div>"""
 
     # ---- panel: asal tanah
@@ -1135,7 +1200,8 @@ def _panel_terbit(d, masalah, terbit, baru, boleh_ubah=True):
     riwayat = ""
     if d.get("_terbit"):
         baris = "".join(
-            f'<tr><td>{e(x["jenis_dokumen"].upper())}</td><td class="nomor">{e(x["nomor"] or "-")}</td>'
+            f'<tr><td>{e(x["jenis_dokumen"].replace("_", " ").upper())}</td>'
+            f'<td class="nomor">{e(x["nomor"] or "-")}</td>'
             f'<td>{e(x["nama_file"])}</td>'
             f'<td class="petunjuk">{e(x["dicetak_pada"])}</td>'
             f'<td style="white-space:nowrap">'
@@ -1152,11 +1218,11 @@ def _panel_terbit(d, masalah, terbit, baru, boleh_ubah=True):
         for j, jalur, err in terbit:
             if err:
                 potong.append(f'<li class="galat"><span class="ikon">×</span>'
-                              f'<span>{e(j.upper())}: {e(err)}</span></li>')
+                              f'<span>{e(j.replace("_", " ").upper())}: {e(err)}</span></li>')
             else:
                 nama = e(os.path.basename(jalur))
                 potong.append(
-                    f'<li><span class="ikon">✓</span><span>{e(j.upper())}: berhasil dirakit '
+                    f'<li><span class="ikon">✓</span><span>{e(j.replace("_", " ").upper())}: berhasil dirakit '
                     f'&nbsp;<a class="btn kecil" href="/pratinjau/{nama}">Pratinjau PDF</a> '
                     f'<a class="btn kecil" href="/unduh/{nama}">Unduh DOCX</a></span></li>')
         hasil = ('<div class="kartu"><h2>Hasil cetak</h2><div class="badan">'
@@ -1171,9 +1237,13 @@ diberikan admin.</span></div>""" if not boleh_ubah else f"""
   <button class="btn" type="submit" form="form-cetak" name="jenis" value="bap"{nonaktif}>BAP</button>
   <button class="btn" type="submit" form="form-cetak" name="jenis" value="risalah"{nonaktif}>Risalah</button>
   <button class="btn" type="submit" form="form-cetak" name="jenis" value="sk"{nonaktif}>SK</button>
+  <button class="btn" type="submit" form="form-cetak" name="jenis" value="surat_tugas">
+    Surat Tugas</button>
 </div>
 <div class="petunjuk" style="margin-top:.6rem">Nomor Risalah dan SK diberikan otomatis saat
-pertama kali dicetak, berurutan per jenis hak per tahun.</div>""")
+pertama kali dicetak, berurutan per jenis hak per tahun. <b>Surat Tugas</b> (pemeriksaan
+lapang dan sidang Panitia A) bisa dicetak lebih dulu: cukup panitia, desa, dan pemohon
+yang terisi; nomor dan tanggal pelaksanaannya ditulis tangan.</div>""")
 
     return f"""{catatan}{hasil}
 <div class="kartu"><h2>Pemeriksaan sebelum cetak</h2><div class="badan">
@@ -3190,7 +3260,8 @@ def halaman_template(k, pengguna, pesan=None, terbuka=None):
 
     # Dua tata naskah dipisah jadi dua tab; penjelasan penandanya jadi tab
     # ketiga supaya tidak ikut menumpuk di bawah daftar template.
-    set_kartu = {"": [], "wakaf": [], "hp": [], templat.VARIAN_LOKET: []}
+    set_kartu = {"": [], "wakaf": [], "hp": [], "hptp": [], templat.VARIAN_LOKET: [],
+                 templat.VARIAN_TUGAS: []}
     for j in templat.JENIS:
         info = templat.info(j)
         ringkas, cap = _kepala_template(info, c)
@@ -3202,6 +3273,8 @@ def halaman_template(k, pengguna, pesan=None, terbuka=None):
 Buka kartunya untuk mengunduh, mengganti, atau melihat penandanya.</p></div></div>
 {_tab("template", [("t-hm", "Hak Milik & hak lain"), ("t-wakaf", "Hak Wakaf"),
                    ("t-hp", "Hak Pakai"),
+                   ("t-hptp", "Hak Pakai Tanah Pemerintah"),
+                   ("t-tugas", "Surat tugas"),
                    ("t-loket", "Cetakan loket"),
                    ("t-penanda", "Penanda & cara pakai")])}
 <div class="panel" id="t-hm">{"".join(set_kartu[""])}</div>
@@ -3211,6 +3284,18 @@ Buka kartunya untuk mengunduh, mengganti, atau melihat penandanya.</p></div></di
 badan hukum. Paragraf <code>{{{{!badan_hukum}}}}</code> hanya tercetak untuk
 perorangan, <code>{{{{?badan_hukum}}}}</code> hanya untuk badan hukum.</p>
 {"".join(set_kartu["hp"])}</div>
+<div class="panel" id="t-hptp">
+<p class="petunjuk" style="margin:0 0 .8rem">Hak Pakai selama dipergunakan untuk instansi
+pemerintah (jenis hak HPTP). Penanda khususnya berawalan <code>ins_</code>, mis.
+<code>{{{{ins_dasar}}}}</code> (dasar pembentukan) dan <code>{{{{ins_kedudukan}}}}</code>,
+diisi dari kartu Instansi pemerintah di tab Pihak.</p>
+{"".join(set_kartu["hptp"])}</div>
+<div class="panel" id="t-tugas">
+<p class="petunjuk" style="margin:0 0 .8rem">Satu template untuk semua jenis hak:
+bunyi <code>{{{{st_dasar}}}}</code> ("Permohonan Hak Milik … An. …") dan alamatnya
+diisi dari data berkas. Nomor dan tanggal pelaksanaan sengaja dikosongkan untuk
+ditulis tangan.</p>
+{"".join(set_kartu[templat.VARIAN_TUGAS])}</div>
 <div class="panel" id="t-loket">
 <p class="petunjuk" style="margin:0 0 .8rem">Dipakai menu Pradaftar, berlaku untuk
 semua jenis hak. Formulir jenis hak lain cukup ditambahkan sebagai

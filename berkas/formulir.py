@@ -127,7 +127,10 @@ def simpan(k, f, berkas_id=None, pengguna_id=None):
              satu("penerima_nama"), _n(satu("penerima_nik")), _n(satu("penerima_ttl")),
              _n(satu("penerima_jenis_kelamin")), _n(satu("penerima_alamat")),
              _n(satu("penerima_pekerjaan"))))
-        if satu("penerima_jenis_subjek") == "badan_hukum" or satu("bh_akta_nomor"):
+        # instansi ikut menyimpan baris ini: kedudukan, pejabat yang mewakili, dan
+        # dasar pembentukannya dicetak tata naskah Hak Pakai Tanah Pemerintah
+        if (satu("penerima_jenis_subjek") in ("badan_hukum", "instansi")
+                or satu("bh_akta_nomor")):
             c.execute(db.upsert(
                 "pihak_badan_hukum",
                 "pihak_id,bentuk,kedudukan,akta_nomor,akta_tanggal,notaris,"
@@ -146,6 +149,12 @@ def simpan(k, f, berkas_id=None, pengguna_id=None):
             c.execute(f"UPDATE pihak_badan_hukum SET {', '.join(x + '=?' for x in kol)} "
                       "WHERE pihak_id=?",
                       [_n(satu("bh_" + x)) for x in kol] + [pihak_id])
+            # Rincian instansi pemerintah (HPTP). Ditulis hanya bila formulirnya
+            # memuat medannya, jadi kiriman dari tempat lain tidak menghapusnya.
+            for kol in ("dasar_pembentukan", "jenis_instansi"):
+                if "bh_" + kol in f:
+                    c.execute(f"UPDATE pihak_badan_hukum SET {kol}=? WHERE pihak_id=?",
+                              (_n(satu("bh_" + kol)), pihak_id))
     if satu("kuasa_nama"):
         c.execute("INSERT INTO pihak (berkas_id,peran,jenis_subjek,nama,nik,urut) "
                   "VALUES (?,'kuasa','perorangan',?,?,1)",
@@ -178,6 +187,12 @@ def simpan(k, f, berkas_id=None, pengguna_id=None):
                _n(satu("rencana_penggunaan")), _n(satu("rtrw")), _n(kes),
                _n(satu("tanggal_peta_analisis")),
                _n(satu("uraian_penguasaan_fisik")), _n(satu("uraian_selisih_luas"))))
+    # keadaan tanah untuk tata naskah Hak Pakai Tanah Pemerintah; sama seperti
+    # rincian instansi, hanya ditulis bila medannya ikut terkirim
+    for kol in ("jenis_tanah", "keadaan_tanah"):
+        if kol in f:
+            c.execute(f"UPDATE bidang_tanah SET {kol}=? WHERE berkas_id=?",
+                      (_n(satu(kol)), berkas_id))
 
     # ---- riwayat
     c.execute("DELETE FROM riwayat_perolehan WHERE berkas_id=?", (berkas_id,))

@@ -144,6 +144,30 @@ class DokumenHakPakai(unittest.TestCase):
         self.assertNotIn("Warga Negara Indonesia", sk)
         self.assertNotIn("Kartu Tanda Penduduk", sk)
 
+    def test_risalah_dan_sk_tanpa_kata_ganda(self):
+        """Perbaikan tata naskah Hak Pakai: kalimat yang dulu tercetak janggal."""
+        self._jadikan("perorangan")
+        k = self.k
+        k.execute("UPDATE bidang_tanah SET kesesuaian='Sesuai', penggunaan_sekarang='Pertanian', "
+                  "rencana_penggunaan='Non Pertanian' WHERE berkas_id=?", (self.bid,))
+        k.commit()
+        ris, sk = self._teks("risalah"), self._teks("sk")
+        # assertFalse, bukan assertNotIn: pesan gagalnya tidak memuntahkan isi dokumen
+        for teks, potongan in ((ris, "sesuai Sesuai"), (ris, "Pembeli;"), (ris, "Penjual;"),
+                               (sk, "(Non Pertanian) telah"), (sk, "Pertanian (Non Pertanian)")):
+            self.assertFalse(potongan in teks, f"masih tercetak: {potongan!r}")
+        # Analisis butir 2 «dikuasai oleh … dengan riwayat;» mencetak riwayatnya juga
+        riwayat = [r["uraian"] for r in konteks.muat(k, self.bid)["riwayat"]]
+        if riwayat:
+            awal_analisis = ris.index("ANALISIS HAK ATAS TANAH")
+            self.assertTrue(riwayat[0][:60] in ris[awal_analisis:],
+                            "riwayat tidak tercetak di bagian Analisis")
+        # DATA PENDUKUNG: hanya butir terakhir yang berakhir titik
+        bagian = ris[ris.index("DATA PENDUKUNG"):ris.index("DASAR HUKUM")]
+        butir = [b.strip() for b in bagian.splitlines()[1:] if b.strip()]
+        tengah = [b[-40:] for b in butir[:-1] if not b.endswith(";")]
+        self.assertEqual(tengah, [], "butir di tengah DATA PENDUKUNG tidak berakhir «;»")
+
     def test_badan_hukum_kurang_rincian_diperingatkan(self):
         self._jadikan("badan_hukum")
         self.k.execute("UPDATE pihak_badan_hukum SET bidang_usaha=NULL, nib=NULL WHERE "

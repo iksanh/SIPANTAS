@@ -116,11 +116,14 @@ def hapus(bid):
 @bp.post("/berkas/<int:bid>/cetak")
 def cetak(bid):
     """Dokumen hanya boleh terbit kalau pemeriksaannya bersih dari galat —
-    nomor yang telanjur keluar tidak bisa ditarik kembali."""
+    nomor yang telanjur keluar tidak bisa ditarik kembali.
+
+    Kecuali surat tugas: tanpa nomor, dan terbit sebelum pemeriksaan lapang,
+    jadi syaratnya sendiri diperiksa terbitkan.rakit()."""
     izin.pastikan_ubah(g.k, bid)
-    if any(t == "galat" for t, _ in konteks.periksa(g.k, bid)):
-        return redirect(f"/berkas/{bid}?pesan=galat_cetak", 303)
     jenis = request.form.get("jenis") or "semua"
+    if jenis != "surat_tugas" and any(t == "galat" for t, _ in konteks.periksa(g.k, bid)):
+        return redirect(f"/berkas/{bid}?pesan=galat_cetak", 303)
     if jenis == "semua":
         hasil = terbitkan.terbitkan_semua(g.k, bid, g.pengguna["id"])
     else:

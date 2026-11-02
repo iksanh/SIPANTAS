@@ -108,6 +108,11 @@ def hak_pakai(d):
     return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HP"
 
 
+def hak_pakai_pemerintah(d):
+    """Benar bila berkas ini Hak Pakai Tanah Pemerintah (tata naskah -hptp)."""
+    return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HPTP"
+
+
 # Sebutan Hak Pakai menurut Pasal 111 ayat (1) Permen ATR/BPN 18/2021: Hak Pakai
 # dengan jangka waktu untuk perorangan dan badan hukum, Hak Pakai selama
 # dipergunakan untuk instansi pemerintah. Risalah menulisnya huruf kecil,
@@ -785,6 +790,8 @@ def periksa(k, berkas_id):
     # --- Hak Pakai: rincian subjek yang dicetak SK (Lampiran VI Permen 18/2021)
     if hak_pakai(d) and penerima:
         m += _periksa_hak_pakai(d, penerima)
+    if hak_pakai_pemerintah(d) and penerima:
+        m += _periksa_instansi(d, penerima)
 
     # --- kegiatan yang sah untuk jenis hak ini
     if d["jenis_kegiatan"] not in [x.strip() for x in hak["kegiatan_boleh"].split(",")]:
@@ -893,6 +900,11 @@ def periksa(k, berkas_id):
     for s in syarat:
         if s["kategori"] == "badan_hukum" and subjek != "badan_hukum":
             continue
+        # instansi pemerintah tidak punya Kartu Keluarga; KTP pejabatnya dicetak
+        # tata naskah -hptp dari isian pejabat yang mewakili
+        if (hak_pakai_pemerintah(d) and s["kategori"] == "pemohon"
+                and "kartu keluarga" in s["nama"].lower()):
+            continue
         kunci = _kata_kunci(s["nama"])
         if not any(x in punya for x in kunci):
             m.append(("peringatan", f"Dokumen wajib belum tercatat: {s['nama']} ({s['dasar']})."))
@@ -988,6 +1000,107 @@ def _periksa_hak_pakai(d, penerima):
     return m
 
 
+def _periksa_instansi(d, penerima):
+    """Pemeriksaan yang hanya berlaku untuk berkas Hak Pakai Tanah Pemerintah."""
+    m = []
+    bh = penerima.get("badan_hukum") or {}
+    if not (bh.get("dasar_pembentukan") or "").strip():
+        m.append(("peringatan", "Dasar pembentukan instansi belum diisi — dicetak di Uraian "
+                                "mengenai Pemohon Risalah dan Menimbang huruf a SK. "
+                                "Isi di tab Pihak."))
+    if not ((bh.get("kedudukan") or "").strip() or (penerima.get("alamat") or "").strip()):
+        m.append(("peringatan", "Kedudukan/alamat instansi belum diisi."))
+    if not (bh.get("wakil_nama") or "").strip():
+        m.append(("peringatan", "Pejabat yang mewakili instansi belum diisi — BAP, Risalah, "
+                                "dan SK menyebut siapa yang bertindak atas nama instansi."))
+    if not (bh.get("jenis_instansi") or "").strip():
+        m.append(("peringatan", "Golongan instansi (Pasal 111 ayat (3)) belum dipilih — "
+                                "dianggap Pemerintah Daerah (huruf b)."))
+    if d["risalah"].get("jangka_waktu_tahun"):
+        m.append(("peringatan", "Hak Pakai Tanah Pemerintah diberikan selama dipergunakan, "
+                                "tanpa jangka waktu — isian jangka waktu pada Risalah "
+                                "sebaiknya dikosongkan."))
+    return m
+
+
+def _kecil_awal(s):
+    s = (s or "").strip()
+    return s[:1].lower() + s[1:]
+
+
+def penanda_instansi(c, d):
+    """Penanda tata naskah Hak Pakai Tanah Pemerintah (bap/risalah/sk-hptp).
+
+    Sengaja tidak dimasukkan ke bangun(), sama seperti penanda surat tugas:
+    rekaman acuan konteks berkas lain tidak ikut berubah. Kalimat yang bagiannya
+    bisa kosong disusun di sini, supaya dokumen tidak mencetak kata gantung.
+    """
+    penerima = penerima_hak(d)
+    bh = penerima.get("badan_hukum") or {}
+    g = lambda kol: (bh.get(kol) or "").strip()
+    t = d.get("tanah") or {}
+    nama = (c.get("nama_penerima") or "").strip()
+
+    kode = g("jenis_instansi") or "daerah"
+    huruf, label = next(((h, lb) for k_, h, lb in db.JENIS_INSTANSI if k_ == kode),
+                        ("b", "Pemerintah Daerah"))
+    dasar = g("dasar_pembentukan")
+    wakil, jabatan = g("wakil_nama"), g("wakil_jabatan")
+    selaku = _gabung(wakil, f"selaku {jabatan}" if wakil and jabatan else "")
+
+    n = len(d.get("riwayat") or [])
+    asal = f" yang berasal dari {n} ({util.terbilang(n)}) bidang tanah" if n > 1 else ""
+
+    jenis_tanah = (t.get("jenis_tanah") or "").strip()
+    keadaan = (t.get("keadaan_tanah") or "").strip()
+    if jenis_tanah and keadaan:
+        kalimat_keadaan = (f"Bahwa keadaan tanah yang dimohon berupa tanah "
+                           f"{jenis_tanah.lower()} yang keadaan tanahnya {keadaan}.")
+    elif jenis_tanah:
+        kalimat_keadaan = f"Bahwa keadaan tanah yang dimohon berupa tanah {jenis_tanah.lower()}."
+    elif keadaan:
+        kalimat_keadaan = f"Bahwa keadaan tanah yang dimohon {keadaan}."
+    else:
+        kalimat_keadaan = ""
+
+    sppf = (c.get("sppf") or "").strip()
+    desa = " ".join(x for x in (c.get("jenis_desa"), c.get("nama_desa")) if x)
+    nomor_berkas = (d.get("nomor_berkas") or "").strip()
+    return {
+        "ins_jenis": kode,
+        "ins_huruf": huruf,
+        "ins_jenis_label": label,
+        "ins_dasar": dasar,
+        "ins_dibentuk": f", yang dibentuk berdasarkan {dasar}" if dasar else "",
+        "ins_kedudukan": g("kedudukan") or (penerima.get("alamat") or "").strip(),
+        "ins_wakil": wakil,
+        "ins_wakil_jabatan": jabatan,
+        "ins_wakil_nik": g("wakil_nik"),
+        "ins_wakil_selaku": selaku,
+        # BAP & Risalah: «… dari Dr. X selaku Sekda yang bertindak untuk dan atas nama …»
+        "ins_pemohon_bertindak": (f"{selaku} yang bertindak untuk dan atas nama {nama}"
+                                  if selaku else nama),
+        # SK Membaca huruf a
+        "ins_pemohon_mewakili": (f"{selaku} bertindak untuk dan atas nama serta mewakili "
+                                 f"{nama}" if selaku else nama),
+        "ins_bidang_jumlah": n,
+        "ins_asal_bidang": asal,
+        "ins_nomor_berkas": nomor_berkas,
+        "ins_nomor_berkas_frasa": f" Nomor berkas {nomor_berkas}" if nomor_berkas else "",
+        "ins_sesuai_sppf": f" sesuai dengan {sppf}" if sppf else "",
+        "ins_jenis_tanah": jenis_tanah,
+        "ins_jenis_tanah_frasa": f" {jenis_tanah}" if jenis_tanah else "",
+        "ins_keadaan_tanah": keadaan,
+        "ins_keadaan_kalimat": kalimat_keadaan,
+        "ins_kesesuaian_kecil": _kecil_awal(c.get("kesesuaian")),
+        # judul SK ditulis huruf besar seluruhnya
+        "ins_nama_kapital": nama.upper(),
+        "ins_luas_kapital": (c.get("luas_teks") or "").upper(),
+        "ins_desa_kapital": desa.upper(),
+        "ins_kecamatan_kapital": (c.get("kecamatan") or "").upper(),
+    }
+
+
 def _kata_kunci(nama):
     n = nama.lower()
     for frasa in ("surat permohonan", "penguasaan fisik", "peta bidang", "peta analisis",
@@ -995,10 +1108,73 @@ def _kata_kunci(nama):
                   # wakaf: dicocokkan sependek mungkin karena ejaannya beragam
                   # di berkas lama ("Akta Ikra Wakaf", "Pengesahan Nazir")
                   "akta ikra", "pengesahan naz", "kesediaan menjadi naz",
-                  "kartu keluarga", "alas hak"):
+                  "kartu keluarga", "alas hak",
+                  # Hak Pakai Tanah Pemerintah
+                  "kartu inventaris barang", "penguasaan aset", "tanggung jawab mutlak"):
         if frasa in n:
             return [frasa]
     return [n[:22]]
+
+
+# ------------------------------------------------------------ surat tugas
+def _wilayah_kantor(nama_kantor):
+    """'Kantor Pertanahan Kabupaten Bone Bolango' -> 'Kabupaten Bone Bolango'."""
+    m = re.search(r"\b(Kabupaten|Kota)\b.*$", nama_kantor or "")
+    return m.group(0).strip() if m else ""
+
+
+def penanda_surat_tugas(c, d):
+    """Penanda tambahan Surat Perintah Tugas (Pemeriksaan Lapang & Sidang Panitia A).
+
+    Sengaja tidak dimasukkan ke bangun(): hanya surat tugas yang memakainya,
+    jadi rekaman acuan konteks dokumen lain tidak ikut berubah.
+    """
+    peng = d.get("pengaturan") or {}
+    desa = d.get("desa") or {}
+    hak = (d.get("hak") or {}).get("nama", "")
+    penerima = (c.get("nama_penerima") or "").strip()
+    kuasa = (pihak_peran(d, "kuasa").get("nama") or "").strip()
+    if kuasa and _kunci_nama(kuasa) != _kunci_nama(penerima):
+        atas_nama = f"{kuasa} An. {penerima}"
+    else:
+        atas_nama = f"An. {penerima}"
+
+    jabatan_desa = desa.get("jabatan_pejabat") or (
+        "Lurah" if desa.get("jenis") == "Kelurahan" else "Kepala Desa")
+    mengetahui = " ".join(x for x in (jabatan_desa, desa.get("nama") or "") if x)
+
+    panitia = c.get("panitia") or []
+    ketua = (next((a for a in panitia if "ketua" in (a.get("peran") or "").lower()), None)
+             or next((a for a in panitia if a.get("instansi")), None) or {})
+
+    kabupaten = _wilayah_kantor(peng.get("kantor_nama"))
+    return {
+        "st_dasar": " ".join(x for x in ("Permohonan", hak, atas_nama) if x),
+        "st_mengetahui": mengetahui.upper(),
+        "kabupaten": kabupaten,
+        "kabupaten_kapital": kabupaten.upper(),
+        "kantor_kota_kapital": (peng.get("kantor_kota") or "").upper(),
+        "ketua_panitia_nama": ketua.get("nama", ""),
+        "ketua_panitia_nip": ketua.get("nip", ""),
+        "tgl_surat_tugas": util.tanggal_panjang(
+            (d.get("pemeriksaan") or {}).get("tanggal_surat_tugas")),
+    }
+
+
+def syarat_surat_tugas(c, d):
+    """Yang wajib ada sebelum surat tugas dicetak. Kosong = boleh cetak.
+
+    Lebih longgar dari periksa(): surat tugas terbit sebelum pemeriksaan lapang,
+    jadi isian BAP, Risalah, dan SK memang belum ada.
+    """
+    pesan = []
+    if not (d.get("pemeriksaan") or {}).get("panitia_id"):
+        pesan.append("Susunan Panitia A belum dipilih (tab “Sidang & dokumen terbit”).")
+    if not (d.get("desa") or {}).get("nama"):
+        pesan.append("Letak tanah belum diisi: pilih desa di tab “Bidang tanah”.")
+    if not (c.get("nama_penerima") or "").strip():
+        pesan.append("Nama pemohon belum diisi (tab “Pihak”).")
+    return pesan
 
 
 # ------------------------------------------------- katalog penanda template
@@ -1011,8 +1187,9 @@ def konteks_contoh(k):
     """
     for r in k.execute("SELECT id FROM berkas ORDER BY id DESC LIMIT 10"):
         try:
-            c, _ = bangun(k, r["id"])
-            return c, r["id"]
+            c, d = bangun(k, r["id"])
+            # penanda surat tugas dan instansi ikut, supaya halaman Template mengenalinya
+            return dict(c, **penanda_surat_tugas(c, d), **penanda_instansi(c, d)), r["id"]
         except Exception:                                          # noqa: BLE001
             continue
     return {}, None

@@ -16,7 +16,8 @@ DIR_TEMPLATE = jalur.TEMPLATE
 DIR_KELUARAN = jalur.KELUARAN
 DIR_FOTO = foto_lapang.DIR_FOTO
 
-JUDUL = {"bap": "BAP", "risalah": "Risalah", "sk": "SK", "penolakan": "Penolakan"}
+JUDUL = {"bap": "BAP", "risalah": "Risalah", "sk": "SK", "penolakan": "Penolakan",
+         "surat_tugas": "Surat Tugas"}
 
 
 def _pengaturan(k):
@@ -110,6 +111,13 @@ def rakit(k, berkas_id, jenis):
     c, d = konteks.bangun(k, berkas_id)
     if c is None:
         raise ValueError("Berkas tidak ditemukan")
+    if jenis == "surat_tugas":
+        kurang = konteks.syarat_surat_tugas(c, d)
+        if kurang:
+            raise ValueError(" ".join(kurang))
+        c = dict(c, **konteks.penanda_surat_tugas(c, d))
+    if konteks.hak_pakai_pemerintah(d):
+        c = dict(c, **konteks.penanda_instansi(c, d))
 
     # Tata naskah mana yang dipakai ditentukan jenis haknya: wakaf punya Risalah dan
     # SK sendiri. Varian yang belum punya berkasnya jatuh kembali ke template baku.

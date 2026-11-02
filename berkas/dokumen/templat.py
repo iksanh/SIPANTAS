@@ -39,10 +39,14 @@ VARIAN = {
     "wakaf": "Hak Wakaf",
     # perorangan dan badan hukum dalam satu set; bagian yang berbeda bersyarat
     "hp": "Hak Pakai",
+    # Hak Pakai selama dipergunakan untuk instansi pemerintah (jenis hak HPTP)
+    "hptp": "Hak Pakai Tanah Pemerintah",
 }
 # Bukan tata naskah, jadi tidak ikut perkalian DOKUMEN x VARIAN di _susun_jenis.
 VARIAN_LOKET = "loket"
-NAMA_VARIAN = dict(VARIAN, **{VARIAN_LOKET: "Cetakan loket"})
+VARIAN_TUGAS = "tugas"
+NAMA_VARIAN = dict(VARIAN, **{VARIAN_LOKET: "Cetakan loket",
+                              VARIAN_TUGAS: "Surat tugas"})
 
 # Cetakan loket punya sumbu varian sendiri — per formulir lampiran Permen
 # (184 untuk Hak Milik), bukan per tata naskah (Hak Milik / wakaf) seperti
@@ -53,6 +57,16 @@ KELENGKAPAN = {
 }
 
 
+# Satu template untuk semua jenis hak: yang berbeda per jenis hak hanya
+# bunyi "Permohonan Hak …", dan itu diisi dari data. Kalau kelak satu jenis
+# hak butuh tata naskah sendiri, cukup tambahkan kunci surat_tugas-<varian>
+# di sini — templat.kunci() sudah jatuh ke template baku selama belum ada.
+SURAT_TUGAS = {
+    "surat_tugas": ("Surat Tugas", "Surat Perintah Tugas Pemeriksaan Lapang dan Sidang "
+                                   "Panitia A — semua jenis hak"),
+}
+
+
 def _susun_jenis():
     hasil = {}
     for varian, label_varian in VARIAN.items():
@@ -60,6 +74,9 @@ def _susun_jenis():
             kunci = f"{dok}-{varian}" if varian else dok
             hasil[kunci] = (f"{nama} · {label_varian}", f"{kunci}.docx",
                             f"{uraian} — {label_varian}", dok, varian)
+    for dok, (nama, uraian) in SURAT_TUGAS.items():
+        # berlaku untuk semua jenis hak, jadi tidak menumpang di tab tata naskah
+        hasil[dok] = (nama, f"{dok}.docx", uraian, dok, VARIAN_TUGAS)
     for dok, (nama, uraian) in KELENGKAPAN.items():
         # varian "loket": bukan tata naskah Hak Milik maupun wakaf, melainkan
         # formulir loket yang berlaku untuk semua jenis hak. Halaman Template

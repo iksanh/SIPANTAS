@@ -36,6 +36,7 @@ from docx.table import Table
 from docx.text.paragraph import Paragraph
 
 from .. import jalur
+from ..dokumen import templat
 
 
 class JangkarHilang(Exception):
@@ -328,6 +329,51 @@ def ubah_risalah(dok):
               "untuk diberikan {{nama_hak_lengkap}}.",
               f"untuk diberikan {{{{nama_hak_lengkap}}}} selama {JANGKA}.")
 
+    _rapikan_risalah(dok)
+
+
+def _wajib(n, jangkar):
+    if not n:
+        raise JangkarHilang(jangkar)
+
+
+def _rapikan_risalah(dok):
+    """Kalimat template Hak Milik yang tercetak janggal pada Risalah Hak Pakai.
+
+    Hanya mengubah salinan -hp; template Hak Milik dibiarkan apa adanya.
+    """
+    # «sehingga bidang tanah tersebut sesuai {{kesesuaian}}» -> «… sesuai Sesuai …»
+    lama = "sehingga bidang tanah tersebut sesuai {{kesesuaian}}"
+    _wajib(_ganti_semua(dok, lama, "sehingga bidang tanah tersebut {{kesesuaian}}"), lama)
+
+    # DATA PENDUKUNG: «Pembeli»/«Penjual» tidak berlaku untuk hibah, waris, dan lainnya
+    for lama, baru in (("{{nama_penerima}} Pembeli;", "{{nama_penerima}} (pemohon);"),
+                       ("{{pemilik_sebelumnya}} Penjual;",
+                        "{{pemilik_sebelumnya}} (pemilik sebelumnya);")):
+        _wajib(_ganti_semua(dok, lama, baru), lama)
+    # Daftar dokumen masih disambung butir tetap di bawahnya, jadi butir
+    # terakhirnya pun berakhir «;», bukan «.»
+    _wajib(_ganti_semua(dok, "{{*dokumen.uraian}}{{*dokumen._akhir}}", "{{*dokumen.uraian}};"),
+           "{{*dokumen.uraian}}{{*dokumen._akhir}}")
+
+    # VIII. Analisis butir 2 «dikuasai oleh … dengan riwayat;» tanpa riwayatnya
+    analisis = _cari(dok, "Bahwa bidang tanah yang dimohon dikuasai oleh {{nama_penerima}} "
+                          "dengan riwayat;")
+    _ganti_run(analisis, "dengan riwayat;", "dengan riwayat:")
+    _tiru_paragraf(_cari(dok, "{{*riwayat.uraian}}"), analisis,
+                   "{{*riwayat.uraian}}{{*riwayat._akhir}}")
+
+
+def _rapikan_sk(dok):
+    """Menimbang huruf c SK Hak Pakai: rencana penggunaan tercetak dua kali."""
+    for lama, baru in (
+            ("dipergunakan untuk {{penggunaan_sekarang}} ({{rencana_penggunaan}});",
+             "dipergunakan untuk {{penggunaan_sekarang}};"),
+            ("sehingga penggunaan bidang tanah tersebut untuk {{rencana_penggunaan}} "
+             "({{rencana_penggunaan}}) telah {{kesesuaian}}",
+             "sehingga bidang tanah tersebut {{kesesuaian}}")):
+        _wajib(_ganti_semua(dok, lama, baru), lama)
+
 
 # ------------------------------------------------------------------------- SK
 def ubah_sk(dok):
@@ -380,6 +426,8 @@ def ubah_sk(dok):
                    "tanah Hak Pakai ini telah diusahakan dengan baik dan memenuhi "
                    "syarat-syarat yang ditentukan peraturan perundang-undangan;")
 
+    _rapikan_sk(dok)
+
 
 UBAH = {"bap": ubah_bap, "risalah": ubah_risalah, "sk": ubah_sk}
 
@@ -397,7 +445,15 @@ def main():
         asal = os.path.join(jalur.TEMPLATE, f"{jenis}.docx")
         tujuan = os.path.join(jalur.TEMPLATE, f"{jenis}-hp.docx")
         try:
-            siapkan(jenis, asal, tujuan)
+            # dirakit di memori dulu: kalau jangkarnya hilang, template lama utuh
+            dok = Document(asal)
+            UBAH[jenis](dok)
+            # suntingan lewat menu Template tidak hilang begitu saja: salinan
+            # lamanya bisa dipulihkan dari menu yang sama
+            cadangan = templat._cadangkan(f"{jenis}-hp")
+            if cadangan:
+                print(f"  cadangan {cadangan}")
+            dok.save(tujuan)
         except JangkarHilang as ex:
             gagal = True
             print(f"  ! {jenis}: kalimat jangkar tidak ditemukan di {jenis}.docx: {ex}")
