@@ -722,6 +722,39 @@ def _isi_pihak(p=None):
             f'</div>')
 
 
+def _kartu_aiw(d, ini_wakaf):
+    """Kartu "Isi dari Akta Ikrar Wakaf" di tab Pihak.
+
+    Gambar/PDF-nya dibaca app.js di peramban (Tesseract.js / pdf.js), teksnya
+    diurai /berkas/aiw/urai (aiw.py), lalu hasilnya dipratinjau dan diterapkan
+    ke isian formulir. Medan unggahnya sengaja tanpa name: aktanya tidak ikut
+    terkirim saat Simpan.
+
+    Kartu ditampilkan app.js mengikuti pilihan jenis hak. Slot Akta Ikrar Wakaf
+    di tab Dokumen baru ada setelah berkasnya tersimpan sebagai WAKAF, jadi
+    selama slot itu belum tampil kartu ini membawa medan tersembunyinya sendiri.
+    """
+    slot = {x[0] for x in db.dokumen_baku(d.get("jenis_hak_dimohon"))}
+    cadangan = "" if "akta_ikrar" in slot else _tersembunyi(
+        {f"baku_{k}_akta_ikrar": "" for k, _, _ in db.RINCIAN_BAKU["akta_ikrar"]})
+    sembunyi = "" if ini_wakaf else " hidden"
+    return f"""<div class="kartu" data-aiw{sembunyi}><h2>Isi dari Akta Ikrar Wakaf</h2><div class="badan">
+<p class="petunjuk" style="margin-top:0">Unggah foto/scan atau PDF <b>AIW / APAIW</b>. Identitas
+Wakif, Nazhir, dan Saksi serta nomor, tanggal, dan PPAIW aktanya dibaca otomatis, lalu
+ditampilkan dulu untuk diperiksa. Gambarnya dibaca di peramban ini dan tidak diunggah.</p>
+<div class="grid g3" style="align-items:end">
+  <div><label for="f_aiw_berkas">Berkas akta</label>
+  <input type="file" id="f_aiw_berkas" accept="image/*,application/pdf" data-aiw-berkas></div>
+  <div><label for="f_aiw_halaman">Halaman PDF</label>
+  <input type="number" id="f_aiw_halaman" min="1" value="2" data-aiw-halaman>
+  <div class="petunjuk">untuk gambar, abaikan</div></div>
+  <div><button type="button" class="btn" data-aiw-baca>Baca akta</button></div>
+</div>
+<div data-aiw-hasil style="margin-top:.75rem"></div>
+{cadangan}
+</div></div>"""
+
+
 def _isi_foto(f):
     """Satu baris foto: gambar kecil + keterangan. Urutan baris = urutan di lampiran."""
     fid = e(f["id"])
@@ -894,7 +927,9 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
 {_rincian_bh_hak_pakai(d, bh)}
 {_tersembunyi({f"bh_{kol}": bh.get(kol) or "" for kol in _KOLOM_INSTANSI})}
 </div></div>"""
-    p_pihak = f"""<div class="kartu"><h2>{judul_penerima}</h2><div class="badan">
+    p_pihak = f"""{_kartu_aiw(d, ini_wakaf)}
+
+<div class="kartu"><h2>{judul_penerima}</h2><div class="badan">
 <div class="grid g3">
   {kotak("Jenis subjek", "penerima_jenis_subjek", SUBJEK, penerima.get("jenis_subjek", "perorangan"))}
   {bidang("Nama", "penerima_nama", penerima.get("nama"), wajib=True)}

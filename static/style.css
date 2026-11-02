@@ -1055,3 +1055,9 @@ ol.susun.sibuk{opacity:.55;pointer-events:none}
 
 /* isian yang baru diisi dari aplikasi PHPT (app.js: pasangSinkron) */
 .tersinkron{background:var(--aksen-lembut)!important;border-color:var(--aksen-garis)!important}
+
+/* kartu "Isi dari Akta Ikrar Wakaf" (tab Pihak) */
+.kartu[hidden]{display:none}
+table.aiw-pratinjau td{vertical-align:top}
+table.aiw-pratinjau td:first-child{width:2rem}
+table.aiw-pratinjau select{min-width:7rem}

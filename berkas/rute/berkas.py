@@ -8,9 +8,9 @@ sini hanya urutan langkahnya.
 """
 import urllib.parse as up
 
-from flask import Blueprint, g, redirect, request
+from flask import Blueprint, g, jsonify, redirect, request
 
-from .. import formulir, izin, kabar, referensi, web
+from .. import aiw, formulir, izin, kabar, referensi, web
 from ..dokumen import foto, konteks, terbitkan
 from ..util import ke_int
 
@@ -59,6 +59,17 @@ def _halaman_satu(bid, terbit_hasil=None):
     return web.halaman_form(g.k, g.pengguna, d, referensi.semua(g.k),
                             konteks.periksa(g.k, bid), terbit_hasil, kabar.pesan(),
                             boleh_ubah=izin.boleh_ubah(g.pengguna, pemilik))
+
+
+@bp.post("/berkas/aiw/urai")
+def urai_aiw():
+    """Teks halaman AIW/APAIW (hasil OCR di peramban) -> isian tab Pihak.
+    Tidak menulis apa pun ke basis data; penerapannya di app.js, penyimpanannya
+    lewat tombol Simpan biasa."""
+    teks = request.form.get("teks", "")
+    if len(teks) > aiw.BATAS_TEKS:
+        return jsonify({"galat": "Teksnya terlalu panjang untuk satu halaman akta."}), 413
+    return jsonify(aiw.urai(teks))
 
 
 # ------------------------------------------------------------------- simpan
