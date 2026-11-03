@@ -145,7 +145,7 @@ class UjiRute(DasarWeb):
     def test_kartu_aiw_di_formulir_baru(self):
         c = self.klien(masuk=True)
         isi = c.get("/berkas/baru").get_data(as_text=True)
-        self.assertIn("data-aiw", isi)
+        self.assertIn('data-ocr="aiw"', isi)
         # slot Akta Ikrar Wakaf belum tampil di berkas baru (bawaan HM), jadi
         # kartunya membawa medan tersembunyi supaya isiannya tetap tersimpan
         self.assertIn('name="baku_nomor_akta_ikrar"', isi)

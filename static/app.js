@@ -1428,241 +1428,311 @@
     });
   }
 
-  /* ------------- isi tab Pihak dari Akta Ikrar Wakaf ------------- */
-  /* Kartu [data-aiw]. Gambar/PDF dibaca di peramban: PDF yang punya lapisan
-     teks cukup dibaca pdf.js, selebihnya (foto, scan) di-OCR Tesseract.js.
-     Pustakanya dimuat dari CDN hanya saat tombol Baca ditekan. Teksnya diurai
-     server (/berkas/aiw/urai), dipratinjau, dan baru masuk formulir setelah
-     tombol Terapkan — penyimpanannya tetap lewat Simpan biasa. */
+  /* ------------- isi formulir dari dokumen: AIW (tab Pihak), PBT (tab Tanah) ------------- */
+  /* Kartu [data-ocr="<jenis>"]. Gambar/PDF dibaca di peramban: PDF yang punya
+     lapisan teks cukup dibaca pdf.js, selebihnya (foto, scan) di-OCR
+     Tesseract.js. Pustakanya dimuat dari CDN hanya saat tombol Baca ditekan.
+     Teksnya diurai server (/berkas/<jenis>/urai), dipratinjau, dan baru masuk
+     formulir setelah tombol Terapkan — penyimpanannya tetap lewat Simpan biasa.
+     Bagian yang berbeda per dokumen hanya pratinjau + penerapannya (OLAH_OCR). */
   var CDN_PDFJS = "https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/build/";
   var CDN_TESSERACT = "https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";
-  var NAMA_PERAN = { wakif: "Wakif", nazhir: "Nazhir", saksi: "Saksi" };
+  var skripDimuat = {};
 
-  function pasangAiw() {
-    var kartu = document.querySelector("[data-aiw]");
-    if (!kartu) return;
-    var form = kartu.closest("form");
-    var masukan = kartu.querySelector("[data-aiw-berkas]");
-    var halaman = kartu.querySelector("[data-aiw-halaman]");
-    var tombol = kartu.querySelector("[data-aiw-baca]");
-    var wadah = kartu.querySelector("[data-aiw-hasil]");
-    if (!form || !masukan || !tombol || !wadah) return;
-
-    /* tampil hanya untuk berkas wakaf, mengikuti pilihan jenis hak */
-    function cekJenis() {
-      var r = form.elements.jenis_hak_rekomendasi, m = form.elements.jenis_hak_dimohon;
-      if (!r && !m) return;
-      kartu.hidden = ((r && r.value) || (m && m.value)) !== "WAKAF";
-    }
-    ["jenis_hak_rekomendasi", "jenis_hak_dimohon"].forEach(function (n) {
-      var el = form.elements[n];
-      if (el && el.addEventListener) el.addEventListener("change", cekJenis);
+  function escOcr(s) {
+    return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
+      return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
     });
-    cekJenis();
+  }
+  function picuOcr(el, jenis) { el.dispatchEvent(new Event(jenis, { bubbles: true })); }
 
-    function esc(s) {
-      return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) {
-        return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c];
+  function muatSkrip(src) {
+    if (!skripDimuat[src]) {
+      skripDimuat[src] = new Promise(function (jadi, gagal) {
+        var s = document.createElement("script");
+        s.src = src;
+        s.onload = jadi;
+        s.onerror = function () {
+          delete skripDimuat[src];
+          gagal(new Error("Pustaka pembaca tidak bisa dimuat — periksa sambungan internet."));
+        };
+        document.head.appendChild(s);
       });
     }
-    function pesan(kelas, html) {
-      wadah.innerHTML = '<div class="pesan ' + kelas + '" style="margin:0"><div>' + html + "</div></div>";
-    }
-    function picu(el, jenis) { el.dispatchEvent(new Event(jenis, { bubbles: true })); }
+    return skripDimuat[src];
+  }
 
-    var dimuat = {};
-    function muatSkrip(src) {
-      if (!dimuat[src]) {
-        dimuat[src] = new Promise(function (jadi, gagal) {
-          var s = document.createElement("script");
-          s.src = src;
-          s.onload = jadi;
-          s.onerror = function () {
-            delete dimuat[src];
-            gagal(new Error("Pustaka pembaca tidak bisa dimuat — periksa sambungan internet."));
-          };
-          document.head.appendChild(s);
-        });
-      }
-      return dimuat[src];
-    }
+  function ocrGambar(gambar, pesan) {
+    return muatSkrip(CDN_TESSERACT).then(function () {
+      return window.Tesseract.recognize(gambar, "ind", {
+        logger: function (m) {
+          if (m.status === "recognizing text")
+            pesan("", "Membaca tulisan… " + Math.round((m.progress || 0) * 100) + "%");
+          else if (/load|initializ/i.test(m.status || ""))
+            pesan("", "Menyiapkan pembaca tulisan (sekali saja, ±10 MB)…");
+        }
+      });
+    }).then(function (h) { return h.data.text; });
+  }
 
-    function ocr(gambar) {
-      return muatSkrip(CDN_TESSERACT).then(function () {
-        return window.Tesseract.recognize(gambar, "ind", {
-          logger: function (m) {
-            if (m.status === "recognizing text")
-              pesan("", "Membaca tulisan… " + Math.round((m.progress || 0) * 100) + "%");
-            else if (/load|initializ/i.test(m.status || ""))
-              pesan("", "Menyiapkan pembaca tulisan (sekali saja, ±10 MB)…");
-          }
-        });
-      }).then(function (h) { return h.data.text; });
-    }
-
-    /* PDF: lapisan teks dulu; bila kosong (hasil scan), halamannya digambar
-       lalu di-OCR. */
-    function bacaPdf(berkas, no) {
-      return muatSkrip(CDN_PDFJS + "pdf.min.js").then(function () {
-        var pdfjs = window.pdfjsLib;
-        pdfjs.GlobalWorkerOptions.workerSrc = CDN_PDFJS + "pdf.worker.min.js";
-        return berkas.arrayBuffer().then(function (buf) {
-          return pdfjs.getDocument({ data: buf }).promise;
-        });
-      }).then(function (dok) {
-        var n = Math.min(Math.max(1, no || 2), dok.numPages);
-        return dok.getPage(n).then(function (hal) {
-          return hal.getTextContent().then(function (isi) {
-            var teks = isi.items.map(function (x) { return x.str + (x.hasEOL ? "\n" : " "); }).join("");
-            if (teks.replace(/\s/g, "").length > 80) return teks;
-            var vp = hal.getViewport({ scale: 2.5 });
-            var kanvas = document.createElement("canvas");
-            kanvas.width = vp.width;
-            kanvas.height = vp.height;
-            pesan("", "Halaman " + n + " berupa gambar — dibaca dengan OCR…");
-            return hal.render({ canvasContext: kanvas.getContext("2d"), viewport: vp }).promise
-              .then(function () { return ocr(kanvas); });
-          });
+  /* PDF: lapisan teks dulu; bila kosong (hasil scan), halamannya digambar lalu di-OCR. */
+  function bacaPdf(berkas, no, pesan) {
+    return muatSkrip(CDN_PDFJS + "pdf.min.js").then(function () {
+      var pdfjs = window.pdfjsLib;
+      pdfjs.GlobalWorkerOptions.workerSrc = CDN_PDFJS + "pdf.worker.min.js";
+      return berkas.arrayBuffer().then(function (buf) {
+        return pdfjs.getDocument({ data: buf }).promise;
+      });
+    }).then(function (dok) {
+      var n = Math.min(Math.max(1, no || 1), dok.numPages);
+      return dok.getPage(n).then(function (hal) {
+        return hal.getTextContent().then(function (isi) {
+          var teks = isi.items.map(function (x) { return x.str + (x.hasEOL ? "\n" : " "); }).join("");
+          if (teks.replace(/\s/g, "").length > 80) return teks;
+          var vp = hal.getViewport({ scale: 2.5 });
+          var kanvas = document.createElement("canvas");
+          kanvas.width = vp.width;
+          kanvas.height = vp.height;
+          pesan("", "Halaman " + n + " berupa gambar — dibaca dengan OCR…");
+          return hal.render({ canvasContext: kanvas.getContext("2d"), viewport: vp }).promise
+            .then(function () { return ocrGambar(kanvas, pesan); });
         });
       });
-    }
+    });
+  }
 
-    function urai(teks) {
-      var data = new FormData();
-      data.set("teks", teks);
-      var csrf = form.elements._csrf;
-      if (csrf) data.set("_csrf", csrf.value);
-      return fetch("/berkas/aiw/urai", {
-        method: "POST", body: data, credentials: "same-origin",
-        headers: { Accept: "application/json" }
-      }).then(function (r) {
-        if (r.status === 401) throw new Error("Sesi habis — muat ulang halaman lalu masuk lagi.");
-        return r.json().catch(function () { throw new Error("Jawaban server tidak terbaca."); });
-      }).then(function (j) {
-        if (j.galat) throw new Error(j.galat);
-        return j;
-      });
-    }
+  function bacaDokumen(berkas, no, pesan) {
+    var pdf = berkas.type === "application/pdf" || /\.pdf$/i.test(berkas.name);
+    if (pdf) return bacaPdf(berkas, no, pesan);
+    if (/^image\//.test(berkas.type)) return ocrGambar(berkas, pesan);
+    return Promise.reject(new Error("Pilih gambar (JPG/PNG) atau PDF."));
+  }
 
-    /* ---- pratinjau ---- */
-    var KOLOM_AKTA = [["jenis", "Jenis"], ["nomor", "Nomor"], ["tanggal", "Tanggal"],
-                      ["pejabat", "PPAIW"], ["wilayah_pejabat", "Wilayah PPAIW"]];
+  function setelMedan(el, nilai) {
+    if (!el || el.disabled || nilai == null || nilai === "") return 0;
+    nilai = String(nilai);
+    if (el.tagName === "SELECT" && !Array.prototype.some.call(el.options, function (o) {
+      return o.value === nilai; })) return 0;
+    if (el.value === nilai) return 0;
+    el.value = nilai;
+    el.classList.add("tersinkron");
+    picuOcr(el, "input");
+    picuOcr(el, "change");
+    return 1;
+  }
 
-    function pratinjau(h) {
-      var akta = KOLOM_AKTA.filter(function (k) { return h.akta[k[0]]; });
-      var baris = h.pihak.map(function (p, i) {
-        var opsi = ['<option value="">— pilih —</option>'].concat(Object.keys(NAMA_PERAN).map(function (k) {
-          return '<option value="' + k + '"' + (p.peran === k ? " selected" : "") + ">" + NAMA_PERAN[k] + "</option>";
-        })).join("");
-        var rinci = [p.nik && "NIK " + p.nik, p.ttl, p.pekerjaan, p.alamat].filter(Boolean).join(" · ");
-        return '<tr><td><input type="checkbox" checked data-aiw-pakai="' + i + '"></td>' +
-          '<td><select data-aiw-peran="' + i + '">' + opsi + "</select></td>" +
-          "<td><b>" + esc(p.nama) + '</b><div class="petunjuk">' + esc(rinci) + "</div></td></tr>";
-      }).join("");
-      var ingat = (h.peringatan || []).map(function (x) { return "<li>" + esc(x) + "</li>"; }).join("");
-      wadah.innerHTML =
-        (ingat ? '<div class="pesan ingat" style="margin:0 0 .6rem"><ul style="margin:0 0 0 1.1rem">' + ingat + "</ul></div>" : "") +
-        (akta.length ? '<label style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" checked data-aiw-akta> ' +
-          "<b>Akta:</b>&nbsp;" + akta.map(function (k) { return esc(k[1]) + " " + esc(h.akta[k[0]]); }).join(" · ") +
-          "</label>" : "") +
-        (baris ? '<div class="tabel-bungkus"><table class="aiw-pratinjau"><thead><tr><th></th><th>Peran</th>' +
-          "<th>Identitas terbaca</th></tr></thead><tbody>" + baris + "</tbody></table></div>" : "") +
-        ((akta.length || baris) ?
-          '<p class="petunjuk">Nazhir pertama mengisi kartu <b>Penerima hak</b>; selebihnya masuk ' +
-          "<b>Pihak lain</b> (baris dengan NIK/nama yang sama diperbarui, bukan ditambah).</p>" +
-          '<button type="button" class="btn utama kecil" data-aiw-terapkan>Terapkan ke formulir</button>' : "");
-      var t = wadah.querySelector("[data-aiw-terapkan]");
-      if (t) t.addEventListener("click", function () { terapkan(h); });
-    }
+  function daftarIngat(h) {
+    var ingat = (h.peringatan || []).map(function (x) { return "<li>" + escOcr(x) + "</li>"; }).join("");
+    return ingat ? '<div class="pesan ingat" style="margin:0 0 .6rem"><ul style="margin:0 0 0 1.1rem">' +
+      ingat + "</ul></div>" : "";
+  }
 
-    /* ---- penerapan ke formulir ---- */
-    function setel(el, nilai) {
-      if (!el || el.disabled || nilai == null || nilai === "") return 0;
-      nilai = String(nilai);
-      if (el.tagName === "SELECT" && !Array.prototype.some.call(el.options, function (o) {
-        return o.value === nilai; })) return 0;
-      if (el.value === nilai) return 0;
-      el.value = nilai;
-      el.classList.add("tersinkron");
-      picu(el, "input");
-      picu(el, "change");
-      return 1;
-    }
+  /* ---- AIW: identitas Wakif/Nazhir/Saksi + nomor/tanggal/PPAIW akta ---- */
+  var NAMA_PERAN = { wakif: "Wakif", nazhir: "Nazhir", saksi: "Saksi" };
+  var KOLOM_AKTA = [["jenis", "Jenis"], ["nomor", "Nomor"], ["tanggal", "Tanggal"],
+                    ["pejabat", "PPAIW"], ["wilayah_pejabat", "Wilayah PPAIW"]];
 
-    function barisLain(p) {
-      var w = form.querySelector('[data-dinamis="lain"]');
-      if (!w) return null;
-      var semua = Array.prototype.slice.call(w.querySelectorAll(".baris"));
-      var nilai = function (b, n) { var x = b.querySelector('[name="' + n + '"]'); return x ? x.value.trim() : ""; };
-      var sama = semua.filter(function (b) {
-        if (p.nik && nilai(b, "lain_nik") === p.nik) return true;
-        return nilai(b, "lain_nama").toLowerCase() === p.nama.toLowerCase();
-      })[0] || semua.filter(function (b) { return !nilai(b, "lain_nama"); })[0];
-      if (sama) return sama;
-      var contoh = w.querySelector("template");
-      if (!contoh) return null;
-      w.appendChild(document.importNode(contoh.content, true));
-      nomori(w);
-      return w.lastElementChild;
-    }
-
-    function terapkan(h) {
-      var n = 0, pakai = [];
+  function aiwPratinjau(h, k) {
+    var akta = KOLOM_AKTA.filter(function (x) { return h.akta[x[0]]; });
+    var baris = h.pihak.map(function (p, i) {
+      var opsi = ['<option value="">— pilih —</option>'].concat(Object.keys(NAMA_PERAN).map(function (x) {
+        return '<option value="' + x + '"' + (p.peran === x ? " selected" : "") + ">" + NAMA_PERAN[x] + "</option>";
+      })).join("");
+      var rinci = [p.nik && "NIK " + p.nik, p.ttl, p.pekerjaan, p.alamat].filter(Boolean).join(" · ");
+      return '<tr><td><input type="checkbox" checked data-aiw-pakai="' + i + '"></td>' +
+        '<td><select data-aiw-peran="' + i + '">' + opsi + "</select></td>" +
+        "<td><b>" + escOcr(p.nama) + '</b><div class="petunjuk">' + escOcr(rinci) + "</div></td></tr>";
+    }).join("");
+    k.wadah.innerHTML = daftarIngat(h) +
+      (akta.length ? '<label style="display:flex;gap:.4rem;align-items:center"><input type="checkbox" checked data-aiw-akta> ' +
+        "<b>Akta:</b>&nbsp;" + akta.map(function (x) { return escOcr(x[1]) + " " + escOcr(h.akta[x[0]]); }).join(" · ") +
+        "</label>" : "") +
+      (baris ? '<div class="tabel-bungkus"><table class="ocr-pratinjau"><thead><tr><th></th><th>Peran</th>' +
+        "<th>Identitas terbaca</th></tr></thead><tbody>" + baris + "</tbody></table></div>" : "") +
+      ((akta.length || baris) ?
+        '<p class="petunjuk">Nazhir pertama mengisi kartu <b>Penerima hak</b>; selebihnya masuk ' +
+        "<b>Pihak lain</b> (baris dengan NIK/nama yang sama diperbarui, bukan ditambah).</p>" +
+        '<button type="button" class="btn utama kecil" data-ocr-terapkan>Terapkan ke formulir</button>' : "");
+    return function terapkan() {
+      var form = k.form, w = k.wadah, n = 0, pakai = [];
       h.pihak.forEach(function (p, i) {
-        var cek = wadah.querySelector('[data-aiw-pakai="' + i + '"]');
-        var peran = wadah.querySelector('[data-aiw-peran="' + i + '"]');
+        var cek = w.querySelector('[data-aiw-pakai="' + i + '"]');
+        var peran = w.querySelector('[data-aiw-peran="' + i + '"]');
         if (cek && !cek.checked) return;
         pakai.push(Object.assign({}, p, { peran: (peran && peran.value) || "saksi" }));
       });
       var nazhir = pakai.filter(function (p) { return p.peran === "nazhir"; })[0];
       if (nazhir) {
-        var el = form.elements;
-        n += setel(el.penerima_jenis_subjek, "perorangan");
-        ["nama", "nik", "ttl", "pekerjaan", "alamat", "jenis_kelamin"].forEach(function (k) {
-          n += setel(el["penerima_" + k], nazhir[k]);
+        n += setelMedan(form.elements.penerima_jenis_subjek, "perorangan");
+        ["nama", "nik", "ttl", "pekerjaan", "alamat", "jenis_kelamin"].forEach(function (x) {
+          n += setelMedan(form.elements["penerima_" + x], nazhir[x]);
         });
       }
       pakai.forEach(function (p) {
         if (p === nazhir) return;
-        var b = barisLain(p);
+        var b = barisLain(form, p);
         if (!b) return;
-        n += setel(b.querySelector('[name="lain_peran"]'), p.peran);
-        ["nama", "nik", "ttl", "pekerjaan", "alamat"].forEach(function (k) {
-          n += setel(b.querySelector('[name="lain_' + k + '"]'), p[k]);
+        n += setelMedan(b.querySelector('[name="lain_peran"]'), p.peran);
+        ["nama", "nik", "ttl", "pekerjaan", "alamat"].forEach(function (x) {
+          n += setelMedan(b.querySelector('[name="lain_' + x + '"]'), p[x]);
         });
       });
-      var cekAkta = wadah.querySelector("[data-aiw-akta]");
+      var cekAkta = w.querySelector("[data-aiw-akta]");
       if (cekAkta && cekAkta.checked) {
-        KOLOM_AKTA.forEach(function (k) {
-          n += setel(form.elements["baku_" + k[0] + "_akta_ikrar"], h.akta[k[0]]);
+        KOLOM_AKTA.forEach(function (x) {
+          n += setelMedan(form.elements["baku_" + x[0] + "_akta_ikrar"], h.akta[x[0]]);
         });
       }
-      picu(form, "change");                  // supaya penjaga "belum disimpan" tahu
-      pesan(n ? "baik" : "ingat", n
-        ? "<b>" + n + " isian diisi dari akta.</b> Periksa isian yang berwarna (juga di tab " +
-          "<b>Dokumen</b> untuk nomor &amp; PPAIW akta), lalu tekan <b>Simpan</b>."
-        : "Tidak ada isian yang berubah — formulirnya sudah sama dengan akta.");
-    }
+      return n ? "<b>" + n + " isian diisi dari akta.</b> Periksa isian yang berwarna (juga di tab " +
+        "<b>Dokumen</b> untuk nomor &amp; PPAIW akta), lalu tekan <b>Simpan</b>." : "";
+    };
+  }
 
-    function baca() {
-      var berkas = masukan.files && masukan.files[0];
-      if (!berkas) { masukan.focus(); return; }
-      var pdf = berkas.type === "application/pdf" || /\.pdf$/i.test(berkas.name);
-      if (!pdf && !/^image\//.test(berkas.type)) {
-        pesan("galat", "Pilih gambar (JPG/PNG) atau PDF.");
-        return;
+  /* Baris "Pihak lain" untuk satu orang: yang NIK/namanya sama, atau baris
+     kosong, atau baris baru dari template. */
+  function barisLain(form, p) {
+    var w = form.querySelector('[data-dinamis="lain"]');
+    if (!w) return null;
+    var semua = Array.prototype.slice.call(w.querySelectorAll(".baris"));
+    var nilai = function (b, n) { var x = b.querySelector('[name="' + n + '"]'); return x ? x.value.trim() : ""; };
+    var sama = semua.filter(function (b) {
+      if (p.nik && nilai(b, "lain_nik") === p.nik) return true;
+      return nilai(b, "lain_nama").toLowerCase() === p.nama.toLowerCase();
+    })[0] || semua.filter(function (b) { return !nilai(b, "lain_nama"); })[0];
+    if (sama) return sama;
+    var contoh = w.querySelector("template");
+    if (!contoh) return null;
+    w.appendChild(document.importNode(contoh.content, true));
+    nomori(w);
+    return w.lastElementChild;
+  }
+
+  /* ---- PBT: isian tab Bidang tanah ---- */
+  var LABEL_PBT = [["nomor_pbt", "Nomor PBT"], ["tanggal_pbt", "Tanggal PBT"], ["nib", "NIB"],
+                   ["luas_pbt", "Luas (m²)"], ["desa_id", "Desa / Kelurahan"],
+                   ["batas_utara", "Batas utara"], ["batas_timur", "Batas timur"],
+                   ["batas_selatan", "Batas selatan"], ["batas_barat", "Batas barat"],
+                   ["penggunaan_sekarang", "Penggunaan saat ini"]];
+
+  function namaDesa(id) {
+    var d = (window.DAFTAR_DESA || []).filter(function (x) { return String(x.id) === String(id); })[0];
+    return d ? d.jenis + " " + d.nama : "";
+  }
+
+  function pbtPratinjau(h, k) {
+    var form = k.form;
+    var ada = LABEL_PBT.filter(function (x) { return h.isian[x[0]] != null; });
+    var baris = ada.map(function (x) {
+      var el = form.elements[x[0]], kini = el ? el.value : "";
+      var tampil = x[0] === "desa_id" ? namaDesa(h.isian.desa_id) : h.isian[x[0]];
+      var kiniTampil = x[0] === "desa_id" ? namaDesa(kini) : kini;
+      var sama = String(kini) === String(h.isian[x[0]]);
+      return '<tr><td><input type="checkbox" data-pbt-pakai="' + x[0] + '"' + (sama ? "" : " checked") + "></td>" +
+        "<td>" + escOcr(x[1]) + "</td><td><b>" + escOcr(tampil) + "</b></td>" +
+        '<td class="petunjuk">' + (kiniTampil ? escOcr(kiniTampil) : "—") + "</td></tr>";
+    }).join("");
+    k.wadah.innerHTML = daftarIngat(h) + (baris ?
+      '<div class="tabel-bungkus"><table class="ocr-pratinjau"><thead><tr><th></th><th>Isian</th>' +
+      "<th>Terbaca dari PBT</th><th>Isian sekarang</th></tr></thead><tbody>" + baris + "</tbody></table></div>" +
+      '<p class="petunjuk">Yang dicentang menimpa isian sekarang.</p>' +
+      '<button type="button" class="btn utama kecil" data-ocr-terapkan>Terapkan ke formulir</button>' : "");
+    return function terapkan() {
+      var n = 0;
+      ada.forEach(function (x) {
+        var cek = k.wadah.querySelector('[data-pbt-pakai="' + x[0] + '"]');
+        if (!cek || !cek.checked) return;
+        if (x[0] === "desa_id") { n += setelDesa(h.isian.kecamatan, h.isian.desa_id); return; }
+        n += setelMedan(form.elements[x[0]], h.isian[x[0]]);
+      });
+      return n ? "<b>" + n + " isian diisi dari PBT.</b> Periksa isian yang berwarna, lalu tekan " +
+        "<b>Simpan</b>." : "";
+    };
+  }
+
+  /* Desa mengikuti kecamatan (pasangWilayah): kecamatannya dulu, baru desanya. */
+  function setelDesa(kecId, desaId) {
+    var kec = document.getElementById("f_kecamatan"), desa = document.getElementById("f_desa");
+    if (!desa || !desaId) return 0;
+    if (kec && kecId != null && kec.value !== String(kecId)) {
+      kec.value = String(kecId);
+      picuOcr(kec, "change");
+      kec.classList.add("tersinkron");
+    }
+    desa.dataset.terpilih = String(desaId);
+    return setelMedan(desa, desaId);
+  }
+
+  var OLAH_OCR = { aiw: aiwPratinjau, pbt: pbtPratinjau };
+
+  function pasangOcr() {
+    document.querySelectorAll("[data-ocr]").forEach(function (kartu) {
+      var jenis = kartu.dataset.ocr, olah = OLAH_OCR[jenis];
+      var form = kartu.closest("form");
+      var masukan = kartu.querySelector("[data-ocr-berkas]");
+      var halaman = kartu.querySelector("[data-ocr-halaman]");
+      var tombol = kartu.querySelector("[data-ocr-baca]");
+      var wadah = kartu.querySelector("[data-ocr-hasil]");
+      if (!olah || !form || !masukan || !tombol || !wadah) return;
+
+      /* kartu AIW hanya untuk berkas wakaf, mengikuti pilihan jenis hak */
+      if (kartu.hasAttribute("data-hanya-wakaf")) {
+        var cekJenis = function () {
+          var r = form.elements.jenis_hak_rekomendasi, m = form.elements.jenis_hak_dimohon;
+          if (!r && !m) return;
+          kartu.hidden = ((r && r.value) || (m && m.value)) !== "WAKAF";
+        };
+        ["jenis_hak_rekomendasi", "jenis_hak_dimohon"].forEach(function (n) {
+          var el = form.elements[n];
+          if (el && el.addEventListener) el.addEventListener("change", cekJenis);
+        });
+        cekJenis();
       }
-      tombol.disabled = true;
-      tombol.classList.add("sibuk");
-      pesan("", "Membuka berkas…");
-      (pdf ? bacaPdf(berkas, parseInt(halaman && halaman.value, 10)) : ocr(berkas))
-        .then(function (teks) { pesan("", "Mengurai isi akta…"); return urai(teks); })
-        .then(pratinjau)
-        .catch(function (ex) { pesan("galat", esc(ex.message || ex)); })
-        .then(function () { tombol.disabled = false; tombol.classList.remove("sibuk"); });
-    }
 
-    tombol.addEventListener("click", baca);
+      function pesan(kelas, html) {
+        wadah.innerHTML = '<div class="pesan ' + kelas + '" style="margin:0"><div>' + html + "</div></div>";
+      }
+
+      function urai(teks) {
+        var data = new FormData();
+        data.set("teks", teks);
+        if (form.elements._csrf) data.set("_csrf", form.elements._csrf.value);
+        return fetch("/berkas/" + jenis + "/urai", {
+          method: "POST", body: data, credentials: "same-origin",
+          headers: { Accept: "application/json" }
+        }).then(function (r) {
+          if (r.status === 401) throw new Error("Sesi habis — muat ulang halaman lalu masuk lagi.");
+          return r.json().catch(function () { throw new Error("Jawaban server tidak terbaca."); });
+        }).then(function (j) {
+          if (j.galat) throw new Error(j.galat);
+          return j;
+        });
+      }
+
+      function tampilkan(h) {
+        var terapkan = olah(h, { form: form, wadah: wadah });
+        var t = wadah.querySelector("[data-ocr-terapkan]");
+        if (!t) return;
+        t.addEventListener("click", function () {
+          var hasil = terapkan();
+          picuOcr(form, "change");             // supaya penjaga "belum disimpan" tahu
+          pesan(hasil ? "baik" : "ingat",
+                hasil || "Tidak ada isian yang berubah — formulirnya sudah sama dengan dokumen.");
+        });
+      }
+
+      tombol.addEventListener("click", function () {
+        var berkas = masukan.files && masukan.files[0];
+        if (!berkas) { masukan.focus(); return; }
+        tombol.disabled = true;
+        tombol.classList.add("sibuk");
+        pesan("", "Membuka berkas…");
+        bacaDokumen(berkas, parseInt(halaman && halaman.value, 10), pesan)
+          .then(function (teks) { pesan("", "Mengurai isi dokumen…"); return urai(teks); })
+          .then(tampilkan)
+          .catch(function (ex) { pesan("galat", escOcr(ex.message || ex)); })
+          .then(function () { tombol.disabled = false; tombol.classList.remove("sibuk"); });
+      });
+    });
   }
 
   /* Pada formulir bertanda data-jaga-ubah: meninggalkan halaman sesudah
@@ -1703,7 +1773,7 @@
     pasangSurat();
     pasangSusun();
     pasangSinkron();
-    pasangAiw();
+    pasangOcr();
     pasangJagaUbah();
   });
 })();

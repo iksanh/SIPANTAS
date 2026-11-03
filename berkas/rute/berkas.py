@@ -10,7 +10,7 @@ import urllib.parse as up
 
 from flask import Blueprint, g, jsonify, redirect, request
 
-from .. import aiw, formulir, izin, kabar, referensi, web
+from .. import aiw, formulir, izin, kabar, pbt, referensi, web
 from ..dokumen import foto, konteks, terbitkan
 from ..util import ke_int
 
@@ -70,6 +70,19 @@ def urai_aiw():
     if len(teks) > aiw.BATAS_TEKS:
         return jsonify({"galat": "Teksnya terlalu panjang untuk satu halaman akta."}), 413
     return jsonify(aiw.urai(teks))
+
+
+@bp.post("/berkas/pbt/urai")
+def urai_pbt():
+    """Teks Peta Bidang Tanah -> isian tab Bidang tanah (pbt.py). Sama seperti
+    urai_aiw: tidak menulis apa pun ke basis data."""
+    teks = request.form.get("teks", "")
+    if len(teks) > pbt.BATAS_TEKS:
+        return jsonify({"galat": "Teksnya terlalu panjang untuk satu lembar PBT."}), 413
+    desa = [dict(r) for r in g.k.execute(
+        "SELECT d.id, d.kecamatan_id, d.nama, c.nama AS kecamatan FROM ref_desa d "
+        "JOIN ref_kecamatan c ON c.id=d.kecamatan_id")]
+    return jsonify(pbt.urai(teks, desa))
 
 
 # ------------------------------------------------------------------- simpan
