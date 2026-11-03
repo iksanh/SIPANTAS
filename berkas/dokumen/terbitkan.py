@@ -118,6 +118,8 @@ def rakit(k, berkas_id, jenis):
         c = dict(c, **konteks.penanda_surat_tugas(c, d))
     if konteks.hak_pakai_pemerintah(d):
         c = dict(c, **konteks.penanda_instansi(c, d))
+    if konteks.hgb_badan_hukum(d):
+        c = dict(c, **konteks.penanda_hgb(c, d))
 
     # Tata naskah mana yang dipakai ditentukan jenis haknya: wakaf punya Risalah dan
     # SK sendiri. Varian yang belum punya berkasnya jatuh kembali ke template baku.

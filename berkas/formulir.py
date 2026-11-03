@@ -187,9 +187,11 @@ def simpan(k, f, berkas_id=None, pengguna_id=None):
                _n(satu("rencana_penggunaan")), _n(satu("rtrw")), _n(kes),
                _n(satu("tanggal_peta_analisis")),
                _n(satu("uraian_penguasaan_fisik")), _n(satu("uraian_selisih_luas"))))
-    # keadaan tanah untuk tata naskah Hak Pakai Tanah Pemerintah; sama seperti
-    # rincian instansi, hanya ditulis bila medannya ikut terkirim
-    for kol in ("jenis_tanah", "keadaan_tanah"):
+    # keadaan tanah untuk tata naskah Hak Pakai Tanah Pemerintah, dan jalan/asal
+    # tanah/dasar perolehan untuk HGB Badan Hukum; sama seperti rincian instansi,
+    # hanya ditulis bila medannya ikut terkirim
+    for kol in ("jenis_tanah", "keadaan_tanah", "jalan", "asal_tanah_uraian",
+                "dasar_perolehan"):
         if kol in f:
             c.execute(f"UPDATE bidang_tanah SET {kol}=? WHERE berkas_id=?",
                       (_n(satu(kol)), berkas_id))

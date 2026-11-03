@@ -138,6 +138,67 @@ def _isian_keadaan_tanah(d, t):
 </div>"""
 
 
+# Rincian badan hukum yang dicetak Risalah HGB Badan Hukum; kolomnya milik
+# KOLOM_BH_RINCIAN, jadi tersimpan lewat jalur yang sama dengan Hak Pakai.
+_BH_HGB = (
+    ("bidang_usaha", "dicetak «Bidang Usaha/Kegiatan» di Risalah"),
+    ("notaris_kota", "dicetak «… selaku Notaris di …» pada telaah subjek"),
+    ("pengesahan_oleh", "mis. Menteri Hukum dan Hak Asasi Manusia Republik Indonesia"),
+)
+
+
+def _rincian_bh_hgb(bh):
+    """Rincian badan hukum untuk berkas HGB Badan Hukum, pengganti rincian Hak Pakai.
+    Rincian Hak Pakai lainnya tetap terkirim tersembunyi, supaya isinya tidak
+    hilang bila jenis haknya kelak diganti."""
+    label = {kol: lb for kol, lb, *_ in db.KOLOM_BH_RINCIAN}
+    tampil = [kol for kol, _ in _BH_HGB]
+    kolom = [bidang(label[kol], "bh_" + kol, bh.get(kol) or "", petunjuk=pt)
+             for kol, pt in _BH_HGB]
+    sisa = {f"bh_{kol}": bh.get(kol) or "" for kol, *_ in db.KOLOM_BH_RINCIAN
+            if kol not in tampil}
+    return f"""<h3 style="margin:1.1rem 0 .2rem">Rincian untuk Risalah &amp; SK HGB Badan Hukum</h3>
+<p class="petunjuk" style="margin:0">Akta pendirian, pengesahan, dan NIB di atas dicetak di
+Uraian mengenai Pemohon dan telaah subjek Risalah. Yang dikosongkan dilewati.</p>
+<div class="grid g3" style="margin-top:.75rem">{"".join(kolom)}</div>
+{_tersembunyi(sisa)}"""
+
+
+# Isian bidang tanah yang hanya dipakai tata naskah HGB Badan Hukum
+_KOLOM_TANAH_HGB = ("jalan", "asal_tanah_uraian", "dasar_perolehan")
+
+
+def _isian_tanah_hgb(t):
+    g = lambda kol: t.get(kol) or ""
+    return f"""<h3 style="margin:1.1rem 0 .2rem">Untuk Risalah &amp; SK HGB Badan Hukum</h3>
+<div class="grid g2" style="margin-top:.75rem">
+  {bidang("Nama jalan", "jalan", g("jalan"),
+          petunjuk="dicetak «Jalan : …» di Risalah; kosong dicetak «-»")}
+  {bidang("Jenis tanah", "jenis_tanah", g("jenis_tanah"),
+          petunjuk="mis. Non Pertanian — dicetak «atas sebidang tanah Non Pertanian» di SK; "
+                   "kosong = Non Pertanian")}
+</div>
+{area("Asal tanah negara", "asal_tanah_uraian", g("asal_tanah_uraian"),
+      "mis. tanah yang sudah bersertipikat Sertipikat Hak Milik NIB … seluas … yang telah "
+      "dilepaskan haknya berdasarkan Akta Pernyataan Pelepasan Hak Atas Tanah Nomor … tanggal … "
+      "— dicetak «Tanah Negara yang berasal dari …»", baris=3)}
+<div style="margin-top:.75rem">
+  {bidang("Dasar peralihan kepada pemohon", "dasar_perolehan", g("dasar_perolehan"),
+          petunjuk="mis. Akta Pernyataan Pelepasan Hak Atas Tanah — dicetak «diperoleh pemohon "
+                   "dari (pemilik sebelumnya, tab Pihak) berdasarkan …»")}
+</div>
+{_tersembunyi({"keadaan_tanah": g("keadaan_tanah")})}"""
+
+
+def _isian_tanah_khusus(d, t):
+    """Isian bidang tanah khusus jenis hak. Yang tidak dipakai jenis hak berkas
+    ini tetap terkirim tersembunyi, supaya isinya tidak hilang."""
+    if konteks.hgb_badan_hukum(d):
+        return _isian_tanah_hgb(t)
+    return _isian_keadaan_tanah(d, t) + _tersembunyi(
+        {kol: t.get(kol) or "" for kol in _KOLOM_TANAH_HGB})
+
+
 # Urutan pengisian berkas baru. Tiga langkah pertama wajib supaya berkasnya
 # berarti; tiga sisanya boleh menyusul, dan itu dikatakan terang-terangan
 # supaya petugas baru tidak merasa harus melengkapi semuanya sekaligus.
@@ -722,37 +783,54 @@ def _isi_pihak(p=None):
             f'</div>')
 
 
+def _kartu_ocr(jenis, judul, petunjuk, halaman=1, atribut="", tambahan=""):
+    """Kartu "isi dari dokumen": unggah foto/scan/PDF, baca, pratinjau, terapkan.
+
+    Gambar/PDF-nya dibaca app.js di peramban (pdf.js / Tesseract.js), teksnya
+    diurai /berkas/<jenis>/urai (aiw.py, pbt.py), lalu hasilnya dipratinjau
+    sebelum masuk ke isian formulir. Medan unggahnya sengaja tanpa name:
+    dokumennya tidak ikut terkirim saat Simpan.
+    """
+    i = f"f_ocr_{jenis}"
+    return f"""<div class="kartu" data-ocr="{jenis}"{atribut}><h2>{e(judul)}</h2><div class="badan">
+<p class="petunjuk" style="margin-top:0">{petunjuk} Gambarnya dibaca di peramban ini dan
+tidak diunggah; hasilnya ditampilkan dulu untuk diperiksa.</p>
+<div class="grid g3" style="align-items:end">
+  <div><label for="{i}_berkas">Berkas</label>
+  <input type="file" id="{i}_berkas" accept="image/*,application/pdf" data-ocr-berkas></div>
+  <div><label for="{i}_halaman">Halaman PDF</label>
+  <input type="number" id="{i}_halaman" min="1" value="{halaman}" data-ocr-halaman>
+  <div class="petunjuk">untuk gambar, abaikan</div></div>
+  <div><button type="button" class="btn" data-ocr-baca>Baca dokumen</button></div>
+</div>
+<div data-ocr-hasil style="margin-top:.75rem"></div>
+{tambahan}
+</div></div>"""
+
+
 def _kartu_aiw(d, ini_wakaf):
-    """Kartu "Isi dari Akta Ikrar Wakaf" di tab Pihak.
+    """Kartu Akta Ikrar Wakaf di tab Pihak; ditampilkan app.js mengikuti jenis hak.
 
-    Gambar/PDF-nya dibaca app.js di peramban (Tesseract.js / pdf.js), teksnya
-    diurai /berkas/aiw/urai (aiw.py), lalu hasilnya dipratinjau dan diterapkan
-    ke isian formulir. Medan unggahnya sengaja tanpa name: aktanya tidak ikut
-    terkirim saat Simpan.
-
-    Kartu ditampilkan app.js mengikuti pilihan jenis hak. Slot Akta Ikrar Wakaf
-    di tab Dokumen baru ada setelah berkasnya tersimpan sebagai WAKAF, jadi
-    selama slot itu belum tampil kartu ini membawa medan tersembunyinya sendiri.
+    Slot Akta Ikrar Wakaf di tab Dokumen baru ada setelah berkasnya tersimpan
+    sebagai WAKAF, jadi selama slot itu belum tampil kartu ini membawa medan
+    tersembunyinya sendiri.
     """
     slot = {x[0] for x in db.dokumen_baku(d.get("jenis_hak_dimohon"))}
     cadangan = "" if "akta_ikrar" in slot else _tersembunyi(
         {f"baku_{k}_akta_ikrar": "" for k, _, _ in db.RINCIAN_BAKU["akta_ikrar"]})
-    sembunyi = "" if ini_wakaf else " hidden"
-    return f"""<div class="kartu" data-aiw{sembunyi}><h2>Isi dari Akta Ikrar Wakaf</h2><div class="badan">
-<p class="petunjuk" style="margin-top:0">Unggah foto/scan atau PDF <b>AIW / APAIW</b>. Identitas
-Wakif, Nazhir, dan Saksi serta nomor, tanggal, dan PPAIW aktanya dibaca otomatis, lalu
-ditampilkan dulu untuk diperiksa. Gambarnya dibaca di peramban ini dan tidak diunggah.</p>
-<div class="grid g3" style="align-items:end">
-  <div><label for="f_aiw_berkas">Berkas akta</label>
-  <input type="file" id="f_aiw_berkas" accept="image/*,application/pdf" data-aiw-berkas></div>
-  <div><label for="f_aiw_halaman">Halaman PDF</label>
-  <input type="number" id="f_aiw_halaman" min="1" value="2" data-aiw-halaman>
-  <div class="petunjuk">untuk gambar, abaikan</div></div>
-  <div><button type="button" class="btn" data-aiw-baca>Baca akta</button></div>
-</div>
-<div data-aiw-hasil style="margin-top:.75rem"></div>
-{cadangan}
-</div></div>"""
+    return _kartu_ocr(
+        "aiw", "Isi dari Akta Ikrar Wakaf",
+        "Unggah foto/scan atau PDF <b>AIW / APAIW</b>. Identitas Wakif, Nazhir, dan Saksi "
+        "serta nomor, tanggal, dan PPAIW aktanya dibaca otomatis.",
+        halaman=2, atribut=" data-hanya-wakaf" + ("" if ini_wakaf else " hidden"),
+        tambahan=cadangan)
+
+
+def _kartu_pbt():
+    return _kartu_ocr(
+        "pbt", "Isi dari Peta Bidang Tanah",
+        "Unggah foto/scan atau PDF <b>Peta Bidang Tanah</b>. Nomor dan tanggal PBT, NIB, "
+        "luas, letak desa, batas-batas, dan penggunaan tanahnya dibaca otomatis.")
 
 
 def _isi_foto(f):
@@ -924,7 +1002,7 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
   {bidang("Pengurus yang mewakili", "bh_wakil_nama", bh.get("wakil_nama"))}
   {bidang("Jabatan pengurus", "bh_wakil_jabatan", bh.get("wakil_jabatan"))}
 </div>
-{_rincian_bh_hak_pakai(d, bh)}
+{_rincian_bh_hgb(bh) if konteks.hgb_badan_hukum(d) else _rincian_bh_hak_pakai(d, bh)}
 {_tersembunyi({f"bh_{kol}": bh.get(kol) or "" for kol in _KOLOM_INSTANSI})}
 </div></div>"""
     p_pihak = f"""{_kartu_aiw(d, ini_wakaf)}
@@ -974,7 +1052,9 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
     desa_json = json.dumps([{"id": r["id"], "nama": r["nama"], "jenis": r["jenis"],
                              "kecamatan_id": r["kecamatan_id"], "pejabat": r["nama_pejabat"] or ""}
                             for r in ref["desa"]], ensure_ascii=False)
-    p_tanah = f"""<div class="kartu"><h2>Letak</h2><div class="badan">
+    p_tanah = f"""{_kartu_pbt()}
+
+<div class="kartu"><h2>Letak</h2><div class="badan">
 <div class="grid g2">
   {kotak("Kecamatan", "kecamatan", kec_pilihan, d["desa"].get("kecamatan_id"), "- pilih kecamatan -")}
   <div><label for="f_desa">Desa / Kelurahan <span class="wajib">*</span></label>
@@ -1016,7 +1096,7 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
       t.get("kesesuaian") if t.get("kesesuaian") not in
       (None, "", "Sesuai", "Sesuai Bersyarat", "Tidak Sesuai") else "", baris=2,
       petunjuk="isi hanya bila kesesuaiannya terbagi per luasan")}
-{_isian_keadaan_tanah(d, t)}
+{_isian_tanah_khusus(d, t)}
 </div></div>"""
 
     # ---- panel: asal tanah
@@ -3295,7 +3375,7 @@ def halaman_template(k, pengguna, pesan=None, terbuka=None):
 
     # Dua tata naskah dipisah jadi dua tab; penjelasan penandanya jadi tab
     # ketiga supaya tidak ikut menumpuk di bawah daftar template.
-    set_kartu = {"": [], "wakaf": [], "hp": [], "hptp": [], templat.VARIAN_LOKET: [],
+    set_kartu = {"": [], "wakaf": [], "hp": [], "hptp": [], "hgbbh": [], templat.VARIAN_LOKET: [],
                  templat.VARIAN_TUGAS: []}
     for j in templat.JENIS:
         info = templat.info(j)
@@ -3309,6 +3389,7 @@ Buka kartunya untuk mengunduh, mengganti, atau melihat penandanya.</p></div></di
 {_tab("template", [("t-hm", "Hak Milik & hak lain"), ("t-wakaf", "Hak Wakaf"),
                    ("t-hp", "Hak Pakai"),
                    ("t-hptp", "Hak Pakai Tanah Pemerintah"),
+                   ("t-hgbbh", "HGB Badan Hukum"),
                    ("t-tugas", "Surat tugas"),
                    ("t-loket", "Cetakan loket"),
                    ("t-penanda", "Penanda & cara pakai")])}
@@ -3325,6 +3406,12 @@ pemerintah (jenis hak HPTP). Penanda khususnya berawalan <code>ins_</code>, mis.
 <code>{{{{ins_dasar}}}}</code> (dasar pembentukan) dan <code>{{{{ins_kedudukan}}}}</code>,
 diisi dari kartu Instansi pemerintah di tab Pihak.</p>
 {"".join(set_kartu["hptp"])}</div>
+<div class="panel" id="t-hgbbh">
+<p class="petunjuk" style="margin:0 0 .8rem">Hak Guna Bangunan untuk badan hukum (jenis hak
+HGBBH). BAP-nya memakai BAP baku di tab Hak Milik &amp; hak lain. Penanda khususnya
+berawalan <code>hgb_</code>, mis. <code>{{{{hgb_asal_frasa}}}}</code> (asal Tanah Negara) dan
+<code>{{{{hgb_tata_ruang_frasa}}}}</code>, diisi dari tab Pihak, Bidang tanah, dan Dokumen.</p>
+{"".join(set_kartu["hgbbh"])}</div>
 <div class="panel" id="t-tugas">
 <p class="petunjuk" style="margin:0 0 .8rem">Satu template untuk semua jenis hak:
 bunyi <code>{{{{st_dasar}}}}</code> ("Permohonan Hak Milik … An. …") dan alamatnya

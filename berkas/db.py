@@ -227,7 +227,11 @@ CREATE TABLE IF NOT EXISTS bidang_tanah (
   uraian_selisih_luas TEXT,
   -- dipakai tata naskah Hak Pakai Tanah Pemerintah: «tanah Pekarangan»,
   -- «keadaan tanahnya terdapat bangunan di atasnya»
-  jenis_tanah TEXT, keadaan_tanah TEXT
+  jenis_tanah TEXT, keadaan_tanah TEXT,
+  -- dipakai tata naskah HGB Badan Hukum: nama jalan, asal Tanah Negaranya
+  -- («tanah yang sudah bersertipikat … yang telah dilepaskan haknya …»), dan
+  -- surat peralihan yang dirujuk kalimat «diperoleh pemohon dari … berdasarkan …»
+  jalan TEXT, asal_tanah_uraian TEXT, dasar_perolehan TEXT
 );
 CREATE TABLE IF NOT EXISTS riwayat_perolehan (
   id INTEGER PRIMARY KEY,
@@ -504,6 +508,14 @@ DOKUMEN_BAKU_HAK = {
         ("sptjm", "Surat Pernyataan Tanggung Jawab Mutlak",
          "Surat Pernyataan Tanggung Jawab Mutlak", ""),
     ],
+    # HGB Badan Hukum: surat yang dirujuk kalimat kesesuaian tata ruang Risalah
+    # dan SK («… dan telah dilengkapi dengan …»)
+    "HGBBH": [
+        ("tata_ruang", "Dokumen kesesuaian tata ruang (KKPR / Pernyataan UMK)",
+         "Dokumen kesesuaian tata ruang",
+         "mis. Surat Pernyataan Usaha Mikro atau Usaha Kecil Terkait Tata Ruang tanggal … "
+         "yang ditandatangani oleh …"),
+    ],
 }
 
 
@@ -599,6 +611,12 @@ JENIS_HAK = [
      "perorangan,badan_hukum",
      "baru,perpanjangan,pembaruan",
      "Pasal 85 & 87 Permen ATR/BPN 18/2021", "HGB", "", 2),
+    # HGB untuk badan hukum punya Risalah dan SK sendiri (risalah/sk-hgbbh); BAP-nya
+    # memakai BAP baku. Nomor SK-nya tetap berkode HGB, jadi berurutan bersama HGB.
+    ("HGBBH", "Hak Guna Bangunan Badan Hukum", 1, 30, 20, 30, 1,
+     "badan_hukum",
+     "baru",
+     "Pasal 85 huruf b Permen ATR/BPN 18/2021 (badan hukum Indonesia)", "HGB", "hgbbh", 2),
     # Hak Pakai punya tata naskahnya sendiri (bap-hp, risalah-hp, sk-hp): satu
     # set untuk perorangan maupun badan hukum, bagian yang berbeda bersyarat.
     ("HP", "Hak Pakai", 1, 30, 20, 30, 1,
@@ -630,7 +648,7 @@ JENIS_HAK = [
 ]
 
 # Disisipkan migrasi() ke basis data yang ref_jenis_hak-nya sudah terisi.
-JENIS_HAK_SUSULAN = ("HPTP",)
+JENIS_HAK_SUSULAN = ("HPTP", "HGBBH")
 
 # Golongan instansi penerima Hak Pakai selama dipergunakan, Pasal 111 ayat (3)
 # Permen ATR/BPN 18/2021: (kode, huruf, label)
@@ -1015,7 +1033,8 @@ def migrasi(k):
                       "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", baris)
     for kolom in ("dasar_pembentukan", "jenis_instansi"):
         _tambah_kolom(k, "pihak_badan_hukum", kolom)
-    for kolom in ("jenis_tanah", "keadaan_tanah"):
+    for kolom in ("jenis_tanah", "keadaan_tanah", "jalan", "asal_tanah_uraian",
+                  "dasar_perolehan"):
         _tambah_kolom(k, "bidang_tanah", kolom)
     # Sesi lama belum punya token CSRF. Diisikan satu per satu, bukan satu
     # nilai untuk semua: token yang sama di semua sesi sama saja dengan tidak

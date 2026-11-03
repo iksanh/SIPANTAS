@@ -41,6 +41,14 @@ VARIAN = {
     "hp": "Hak Pakai",
     # Hak Pakai selama dipergunakan untuk instansi pemerintah (jenis hak HPTP)
     "hptp": "Hak Pakai Tanah Pemerintah",
+    # Hak Guna Bangunan untuk badan hukum (jenis hak HGBBH)
+    "hgbbh": "HGB Badan Hukum",
+}
+# Varian yang hanya punya sebagian dari ketiga dokumen. Dokumen yang tidak
+# disebut tidak didaftarkan (tidak muncul di halaman Template), sehingga
+# kunci() memakai template bakunya: HGB Badan Hukum memakai BAP baku.
+DOKUMEN_VARIAN = {
+    "hgbbh": ("risalah", "sk"),
 }
 # Bukan tata naskah, jadi tidak ikut perkalian DOKUMEN x VARIAN di _susun_jenis.
 VARIAN_LOKET = "loket"
@@ -71,6 +79,8 @@ def _susun_jenis():
     hasil = {}
     for varian, label_varian in VARIAN.items():
         for dok, (nama, uraian) in DOKUMEN.items():
+            if dok not in DOKUMEN_VARIAN.get(varian, DOKUMEN):
+                continue
             kunci = f"{dok}-{varian}" if varian else dok
             hasil[kunci] = (f"{nama} · {label_varian}", f"{kunci}.docx",
                             f"{uraian} — {label_varian}", dok, varian)

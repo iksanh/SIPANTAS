@@ -113,6 +113,11 @@ def hak_pakai_pemerintah(d):
     return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HPTP"
 
 
+def hgb_badan_hukum(d):
+    """Benar bila berkas ini HGB untuk badan hukum (tata naskah risalah/sk-hgbbh)."""
+    return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HGBBH"
+
+
 # Sebutan Hak Pakai menurut Pasal 111 ayat (1) Permen ATR/BPN 18/2021: Hak Pakai
 # dengan jangka waktu untuk perorangan dan badan hukum, Hak Pakai selama
 # dipergunakan untuk instansi pemerintah. Risalah menulisnya huruf kecil,
@@ -792,6 +797,8 @@ def periksa(k, berkas_id):
         m += _periksa_hak_pakai(d, penerima)
     if hak_pakai_pemerintah(d) and penerima:
         m += _periksa_instansi(d, penerima)
+    if hgb_badan_hukum(d) and penerima:
+        m += _periksa_hgb(d, penerima)
 
     # --- kegiatan yang sah untuk jenis hak ini
     if d["jenis_kegiatan"] not in [x.strip() for x in hak["kegiatan_boleh"].split(",")]:
@@ -1023,6 +1030,106 @@ def _periksa_instansi(d, penerima):
     return m
 
 
+def _periksa_hgb(d, penerima):
+    """Pemeriksaan yang hanya berlaku untuk berkas HGB Badan Hukum."""
+    m = []
+    if (penerima.get("jenis_subjek") or "perorangan") == "badan_hukum":
+        bh = penerima.get("badan_hukum") or {}
+        kurang = [label for kolom, label in (
+            ("kedudukan", "kedudukan"), ("bidang_usaha", "bidang usaha"),
+            ("akta_tanggal", "tanggal akta pendirian"), ("notaris", "notaris akta pendirian"),
+            ("pengesahan_nomor", "nomor pengesahan"), ("nib", "NIB/OSS"))
+            if not (bh.get(kolom) or "").strip()]
+        if kurang:
+            m.append(("peringatan", "Badan hukum: " + ", ".join(kurang) + " belum diisi — "
+                                    "dicetak di Uraian mengenai Pemohon dan telaah subjek "
+                                    "Risalah. Isi di tab Pihak."))
+    t = d.get("tanah") or {}
+    if not (t.get("asal_tanah_uraian") or "").strip():
+        m.append(("peringatan", "Asal tanah negara belum diisi — Risalah dan SK hanya menulis "
+                                "«Tanah Negara» tanpa asal-usulnya (mis. sertipikat yang "
+                                "dilepaskan haknya). Isi di tab Bidang tanah."))
+    if not _dokumen_khusus(d, "tata_ruang", "tata ruang"):
+        m.append(("peringatan", "Dokumen kesesuaian tata ruang (KKPR / Pernyataan UMK) belum "
+                                "tercatat — kalimat «telah dilengkapi dengan …» tidak "
+                                "dicetak. Isi di tab Dokumen."))
+    return m
+
+
+def penanda_hgb(c, d):
+    """Penanda tata naskah HGB Badan Hukum (risalah/sk-hgbbh).
+
+    Sama seperti penanda_instansi: tidak dimasukkan ke bangun(), supaya rekaman
+    acuan konteks berkas lain tidak berubah. Bagian yang bisa kosong disusun di
+    sini, jadi dokumen tidak mencetak kata gantung.
+    """
+    penerima = penerima_hak(d)
+    bh = penerima.get("badan_hukum") or {}
+    g = lambda kol: (bh.get(kol) or "").strip()
+    t = d.get("tanah") or {}
+    ts = lambda kol: (t.get(kol) or "").strip()
+    nama = (penerima.get("nama") or "").strip()
+
+    # SK menulis kedudukan lengkap dengan provinsinya, Risalah tanpa provinsi
+    kedudukan = g("kedudukan") or (penerima.get("alamat") or "").strip()
+    singkat = re.split(r",\s*Provinsi\b", kedudukan, maxsplit=1, flags=re.I)[0].strip()
+
+    tgl_akta = util.tanggal_panjang(bh.get("akta_tanggal"))
+    akta = ""
+    if g("akta_nomor") or tgl_akta:
+        akta = _gabung("Akta Pendirian", f"Nomor {g('akta_nomor')}" if g("akta_nomor") else "",
+                       f"tanggal {tgl_akta}" if tgl_akta else "")
+        if g("notaris"):
+            akta += f" yang dibuat di hadapan {g('notaris')} selaku Notaris"
+            akta += f" di {g('notaris_kota')}" if g("notaris_kota") else ""
+
+    tgl_sah = util.tanggal_panjang(bh.get("pengesahan_tanggal"))
+    oleh = g("pengesahan_oleh")
+    sah = ""
+    if g("pengesahan_nomor") or tgl_sah:
+        sah = (", yang telah mendapatkan pengesahan" + (f" dari {oleh}" if oleh else "")
+               + " sebagaimana dalam " + _gabung(
+                   "Surat Keputusan", oleh,
+                   f"Nomor {g('pengesahan_nomor')}" if g("pengesahan_nomor") else "",
+                   f"Tanggal {tgl_sah}" if tgl_sah else "")
+               + f" tentang Pengesahan Pendirian Badan Hukum {nama}")
+
+    kuasa = (pihak_peran(d, "kuasa").get("nama") or "").strip()
+    bertindak = (f"{kuasa} bertindak untuk dan atas nama {nama}"
+                 if kuasa and _kunci_nama(kuasa) != _kunci_nama(nama) else nama)
+
+    asal = ts("asal_tanah_uraian")
+    sebelumnya = (c.get("pemilik_sebelumnya") or "").strip()
+    dasar = ts("dasar_perolehan")
+    diperoleh = ""
+    if sebelumnya or dasar:
+        diperoleh = (", yang diperoleh pemohon" + (f" dari {sebelumnya}" if sebelumnya else "")
+                     + (f" berdasarkan {dasar}" if dasar else ""))
+    sppf = (c.get("sppf") or "").strip()
+    tata_ruang = _teks_dokumen(_dokumen_khusus(d, "tata_ruang", "tata ruang"))
+    tgl_panitia = util.tanggal((d.get("panitia") or {}).get("tanggal_sk"))
+    return {
+        "hgb_kedudukan": singkat,
+        "hgb_kedudukan_lengkap": kedudukan,
+        "hgb_jalan": ts("jalan") or "-",
+        "hgb_jenis_tanah": ts("jenis_tanah") or "Non Pertanian",
+        "hgb_akta_pendirian": akta,
+        "hgb_pengesahan_frasa": sah,
+        "hgb_dasar_bentuk": (c.get("bh_dasar_bentuk")
+                             or "peraturan perundang-undangan yang berlaku"),
+        "hgb_pemohon_bertindak": bertindak,
+        "hgb_asal_tanah": asal,
+        "hgb_asal_frasa": f" yang berasal dari {asal}" if asal else "",
+        "hgb_dasar_perolehan": dasar,
+        "hgb_diperoleh": diperoleh,
+        "hgb_sesuai_sppf": f", dimana hal ini sesuai dengan {sppf}" if sppf else "",
+        "hgb_berdasarkan_sppf": f" berdasarkan {sppf}" if sppf else "",
+        "hgb_tata_ruang": tata_ruang,
+        "hgb_tata_ruang_frasa": f" dan telah dilengkapi dengan {tata_ruang}" if tata_ruang else "",
+        "hgb_panitia_tahun": str(tgl_panitia.year) if tgl_panitia else "",
+    }
+
+
 def _kecil_awal(s):
     s = (s or "").strip()
     return s[:1].lower() + s[1:]
@@ -1189,7 +1296,8 @@ def konteks_contoh(k):
         try:
             c, d = bangun(k, r["id"])
             # penanda surat tugas dan instansi ikut, supaya halaman Template mengenalinya
-            return dict(c, **penanda_surat_tugas(c, d), **penanda_instansi(c, d)), r["id"]
+            return dict(c, **penanda_surat_tugas(c, d), **penanda_instansi(c, d),
+                        **penanda_hgb(c, d)), r["id"]
         except Exception:                                          # noqa: BLE001
             continue
     return {}, None
