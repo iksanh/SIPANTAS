@@ -231,7 +231,10 @@ CREATE TABLE IF NOT EXISTS bidang_tanah (
   -- dipakai tata naskah HGB Badan Hukum: nama jalan, asal Tanah Negaranya
   -- («tanah yang sudah bersertipikat … yang telah dilepaskan haknya …»), dan
   -- surat peralihan yang dirujuk kalimat «diperoleh pemohon dari … berdasarkan …»
-  jalan TEXT, asal_tanah_uraian TEXT, dasar_perolehan TEXT
+  jalan TEXT, asal_tanah_uraian TEXT, dasar_perolehan TEXT,
+  -- dipakai tata naskah Hak Pakai Badan Hukum: hasil pemeriksaan lapangan yang
+  -- jadi pertimbangan (mis. berbatasan dengan sungai), satu baris satu kalimat «Bahwa …»
+  pertimbangan_lapang TEXT
 );
 CREATE TABLE IF NOT EXISTS riwayat_perolehan (
   id INTEGER PRIMARY KEY,
@@ -516,6 +519,14 @@ DOKUMEN_BAKU_HAK = {
          "mis. Surat Pernyataan Usaha Mikro atau Usaha Kecil Terkait Tata Ruang tanggal … "
          "yang ditandatangani oleh …"),
     ],
+    # Hak Pakai Badan Hukum: kalimat kesesuaian tata ruang Risalah dan SK
+    # («… dan telah dilengkapi …»). Kategorinya sama dengan HGB Badan Hukum.
+    "HPBH": [
+        ("tata_ruang", "Dokumen kesesuaian tata ruang (PKKPR / KKPR)",
+         "Dokumen kesesuaian tata ruang",
+         "mis. Persetujuan Kesesuaian Kegiatan Pemanfaatan Ruang Nomor … tanggal … "
+         "yang ditandatangani oleh …"),
+    ],
 }
 
 
@@ -580,7 +591,12 @@ def dokumen_baku(kode_hak=None):
     return DOKUMEN_BAKU + DOKUMEN_BAKU_HAK.get((kode_hak or "").upper(), [])
 
 
-SEMUA_BAKU = DOKUMEN_BAKU + [x for v in DOKUMEN_BAKU_HAK.values() for x in v]
+# Satu kategori satu baris, walau dipakai beberapa jenis hak (tata_ruang)
+SEMUA_BAKU = []
+for _x in DOKUMEN_BAKU + [x for v in DOKUMEN_BAKU_HAK.values() for x in v]:
+    if _x[0] not in [y[0] for y in SEMUA_BAKU]:
+        SEMUA_BAKU.append(_x)
+del _x
 KATEGORI_BAKU = [x[0] for x in SEMUA_BAKU]
 
 
@@ -631,6 +647,13 @@ JENIS_HAK = [
      "baru",
      "Pasal 111 ayat (3) Permen ATR/BPN 18/2021 (Hak Pakai selama dipergunakan)",
      "HP", "hptp", 3),
+    # Hak Pakai dengan jangka waktu untuk badan hukum: Risalah dan SK sendiri
+    # (risalah/sk-hpbh), BAP-nya BAP baku. Nomor SK-nya tetap berkode HP.
+    ("HPBH", "Hak Pakai Badan Hukum", 1, 30, 20, 30, 1,
+     "badan_hukum",
+     "baru",
+     "Pasal 111 ayat (2) huruf b Permen ATR/BPN 18/2021 (badan hukum Indonesia)",
+     "HP", "hpbh", 3),
     ("HPL", "Hak Pengelolaan", 0, None, None, None, 1,
      "instansi",
      "baru",
@@ -648,7 +671,7 @@ JENIS_HAK = [
 ]
 
 # Disisipkan migrasi() ke basis data yang ref_jenis_hak-nya sudah terisi.
-JENIS_HAK_SUSULAN = ("HPTP", "HGBBH")
+JENIS_HAK_SUSULAN = ("HPTP", "HGBBH", "HPBH")
 
 # Golongan instansi penerima Hak Pakai selama dipergunakan, Pasal 111 ayat (3)
 # Permen ATR/BPN 18/2021: (kode, huruf, label)
@@ -1034,7 +1057,7 @@ def migrasi(k):
     for kolom in ("dasar_pembentukan", "jenis_instansi"):
         _tambah_kolom(k, "pihak_badan_hukum", kolom)
     for kolom in ("jenis_tanah", "keadaan_tanah", "jalan", "asal_tanah_uraian",
-                  "dasar_perolehan"):
+                  "dasar_perolehan", "pertimbangan_lapang"):
         _tambah_kolom(k, "bidang_tanah", kolom)
     # Sesi lama belum punya token CSRF. Diisikan satu per satu, bukan satu
     # nilai untuk semua: token yang sama di semua sesi sama saja dengan tidak

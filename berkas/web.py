@@ -147,17 +147,18 @@ _BH_HGB = (
 )
 
 
-def _rincian_bh_hgb(bh):
+def _rincian_bh_hgb(bh, judul="HGB Badan Hukum"):
     """Rincian badan hukum untuk berkas HGB Badan Hukum, pengganti rincian Hak Pakai.
     Rincian Hak Pakai lainnya tetap terkirim tersembunyi, supaya isinya tidak
-    hilang bila jenis haknya kelak diganti."""
+    hilang bila jenis haknya kelak diganti. Dipakai juga Hak Pakai Badan Hukum,
+    yang mencetak rincian yang sama (`judul` untuk judul kartunya)."""
     label = {kol: lb for kol, lb, *_ in db.KOLOM_BH_RINCIAN}
     tampil = [kol for kol, _ in _BH_HGB]
     kolom = [bidang(label[kol], "bh_" + kol, bh.get(kol) or "", petunjuk=pt)
              for kol, pt in _BH_HGB]
     sisa = {f"bh_{kol}": bh.get(kol) or "" for kol, *_ in db.KOLOM_BH_RINCIAN
             if kol not in tampil}
-    return f"""<h3 style="margin:1.1rem 0 .2rem">Rincian untuk Risalah &amp; SK HGB Badan Hukum</h3>
+    return f"""<h3 style="margin:1.1rem 0 .2rem">Rincian untuk Risalah &amp; SK {e(judul)}</h3>
 <p class="petunjuk" style="margin:0">Akta pendirian, pengesahan, dan NIB di atas dicetak di
 Uraian mengenai Pemohon dan telaah subjek Risalah. Yang dikosongkan dilewati.</p>
 <div class="grid g3" style="margin-top:.75rem">{"".join(kolom)}</div>
@@ -190,13 +191,38 @@ def _isian_tanah_hgb(t):
 {_tersembunyi({"keadaan_tanah": g("keadaan_tanah")})}"""
 
 
+def _isian_tanah_hpbh(t):
+    """Isian bidang tanah tata naskah Hak Pakai Badan Hukum."""
+    g = lambda kol: t.get(kol) or ""
+    return f"""<h3 style="margin:1.1rem 0 .2rem">Untuk Risalah &amp; SK Hak Pakai Badan Hukum</h3>
+<div class="grid g2" style="margin-top:.75rem">
+  {bidang("Nama jalan", "jalan", g("jalan"),
+          petunjuk="dicetak «Jalan : …» di Risalah; kosong dicetak «-»")}
+  {bidang("Jenis tanah", "jenis_tanah", g("jenis_tanah"),
+          petunjuk="mis. Non Pertanian — dicetak «atas sebidang tanah Non Pertanian» di SK; "
+                   "kosong = Non Pertanian")}
+</div>
+{area("Asal tanah negara", "asal_tanah_uraian", g("asal_tanah_uraian"),
+      "boleh kosong — dicetak «Tanah Negara yang berasal dari …»; kosong dicetak «Tanah "
+      "Negara yang belum dilekati dengan sesuatu Hak»", baris=2)}
+{area("Pertimbangan hasil pemeriksaan lapangan", "pertimbangan_lapang",
+      g("pertimbangan_lapang"),
+      "satu baris satu kalimat, mis. «Bahwa … bidang tanah yang dimohon berbatasan langsung "
+      "dengan sungai di sebelah timur dengan jarak < 50 m» — dicetak di data fisik dan "
+      "analisis Risalah serta Menimbang SK; boleh kosong", baris=4)}
+{_tersembunyi({"keadaan_tanah": g("keadaan_tanah"), "dasar_perolehan": g("dasar_perolehan")})}"""
+
+
 def _isian_tanah_khusus(d, t):
     """Isian bidang tanah khusus jenis hak. Yang tidak dipakai jenis hak berkas
     ini tetap terkirim tersembunyi, supaya isinya tidak hilang."""
+    if konteks.hak_pakai_badan_hukum(d):
+        return _isian_tanah_hpbh(t)
+    pertimbangan = _tersembunyi({"pertimbangan_lapang": t.get("pertimbangan_lapang") or ""})
     if konteks.hgb_badan_hukum(d):
-        return _isian_tanah_hgb(t)
+        return _isian_tanah_hgb(t) + pertimbangan
     return _isian_keadaan_tanah(d, t) + _tersembunyi(
-        {kol: t.get(kol) or "" for kol in _KOLOM_TANAH_HGB})
+        {kol: t.get(kol) or "" for kol in _KOLOM_TANAH_HGB}) + pertimbangan
 
 
 # Urutan pengisian berkas baru. Tiga langkah pertama wajib supaya berkasnya
@@ -1002,7 +1028,9 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
   {bidang("Pengurus yang mewakili", "bh_wakil_nama", bh.get("wakil_nama"))}
   {bidang("Jabatan pengurus", "bh_wakil_jabatan", bh.get("wakil_jabatan"))}
 </div>
-{_rincian_bh_hgb(bh) if konteks.hgb_badan_hukum(d) else _rincian_bh_hak_pakai(d, bh)}
+{_rincian_bh_hgb(bh) if konteks.hgb_badan_hukum(d) else
+  _rincian_bh_hgb(bh, "Hak Pakai Badan Hukum") if konteks.hak_pakai_badan_hukum(d) else
+  _rincian_bh_hak_pakai(d, bh)}
 {_tersembunyi({f"bh_{kol}": bh.get(kol) or "" for kol in _KOLOM_INSTANSI})}
 </div></div>"""
     p_pihak = f"""{_kartu_aiw(d, ini_wakaf)}
@@ -3375,7 +3403,8 @@ def halaman_template(k, pengguna, pesan=None, terbuka=None):
 
     # Dua tata naskah dipisah jadi dua tab; penjelasan penandanya jadi tab
     # ketiga supaya tidak ikut menumpuk di bawah daftar template.
-    set_kartu = {"": [], "wakaf": [], "hp": [], "hptp": [], "hgbbh": [], templat.VARIAN_LOKET: [],
+    set_kartu = {"": [], "wakaf": [], "hp": [], "hptp": [], "hgbbh": [], "hpbh": [],
+                 templat.VARIAN_LOKET: [],
                  templat.VARIAN_TUGAS: []}
     for j in templat.JENIS:
         info = templat.info(j)
@@ -3390,6 +3419,7 @@ Buka kartunya untuk mengunduh, mengganti, atau melihat penandanya.</p></div></di
                    ("t-hp", "Hak Pakai"),
                    ("t-hptp", "Hak Pakai Tanah Pemerintah"),
                    ("t-hgbbh", "HGB Badan Hukum"),
+                   ("t-hpbh", "Hak Pakai Badan Hukum"),
                    ("t-tugas", "Surat tugas"),
                    ("t-loket", "Cetakan loket"),
                    ("t-penanda", "Penanda & cara pakai")])}
@@ -3412,6 +3442,13 @@ HGBBH). BAP-nya memakai BAP baku di tab Hak Milik &amp; hak lain. Penanda khusus
 berawalan <code>hgb_</code>, mis. <code>{{{{hgb_asal_frasa}}}}</code> (asal Tanah Negara) dan
 <code>{{{{hgb_tata_ruang_frasa}}}}</code>, diisi dari tab Pihak, Bidang tanah, dan Dokumen.</p>
 {"".join(set_kartu["hgbbh"])}</div>
+<div class="panel" id="t-hpbh">
+<p class="petunjuk" style="margin:0 0 .8rem">Hak Pakai dengan jangka waktu untuk badan hukum
+(jenis hak HPBH). BAP-nya memakai BAP baku di tab Hak Milik &amp; hak lain. Penanda khususnya
+berawalan <code>hpbh_</code>, mis. <code>{{{{hpbh_tata_ruang_frasa}}}}</code> (kesesuaian tata
+ruang) dan <code>{{{{*hpbh_pertimbangan.uraian}}}}</code> (pertimbangan lapangan), diisi dari
+tab Pihak, Bidang tanah, dan Dokumen.</p>
+{"".join(set_kartu["hpbh"])}</div>
 <div class="panel" id="t-tugas">
 <p class="petunjuk" style="margin:0 0 .8rem">Satu template untuk semua jenis hak:
 bunyi <code>{{{{st_dasar}}}}</code> ("Permohonan Hak Milik … An. …") dan alamatnya

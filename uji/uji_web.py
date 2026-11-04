@@ -735,10 +735,10 @@ class Tampilan(Dasar):
         self.assertEqual(self._tombol_tab(isi), urut)
         self.assertEqual(self._panel(isi), urut)
 
-    def test_template_dipecah_delapan_tab(self):
+    def test_template_dipecah_sembilan_tab(self):
         isi = self.klien(masuk=True).get("/template").get_data(as_text=True)
-        urut = ["t-hm", "t-wakaf", "t-hp", "t-hptp", "t-hgbbh", "t-tugas", "t-loket",
-                "t-penanda"]
+        urut = ["t-hm", "t-wakaf", "t-hp", "t-hptp", "t-hgbbh", "t-hpbh", "t-tugas",
+                "t-loket", "t-penanda"]
         self.assertEqual(self._tombol_tab(isi), urut)
         self.assertEqual(self._panel(isi), urut)
 
@@ -750,7 +750,8 @@ class Tampilan(Dasar):
         wakaf = isi.split('id="t-wakaf"')[1].split('id="t-hp"')[0]
         hp = isi.split('id="t-hp"')[1].split('id="t-hptp"')[0]
         hptp = isi.split('id="t-hptp"')[1].split('id="t-hgbbh"')[0]
-        hgbbh = isi.split('id="t-hgbbh"')[1].split('id="t-tugas"')[0]
+        hgbbh = isi.split('id="t-hgbbh"')[1].split('id="t-hpbh"')[0]
+        hpbh = isi.split('id="t-hpbh"')[1].split('id="t-tugas"')[0]
         tugas = isi.split('id="t-tugas"')[1].split('id="t-loket"')[0]
         loket = isi.split('id="t-loket"')[1].split('id="t-penanda"')[0]
         self.assertEqual(sorted(re.findall(r'id="b-(tpl-[\w-]+)"', hp)),
@@ -760,6 +761,8 @@ class Tampilan(Dasar):
         # HGB badan hukum memakai BAP baku, jadi hanya Risalah dan SK-nya sendiri
         self.assertEqual(sorted(re.findall(r'id="b-(tpl-[\w-]+)"', hgbbh)),
                          ["tpl-risalah-hgbbh", "tpl-sk-hgbbh"])
+        self.assertEqual(sorted(re.findall(r'id="b-(tpl-[\w-]+)"', hpbh)),
+                         ["tpl-risalah-hpbh", "tpl-sk-hpbh"])
         # surat tugas juga berlaku untuk semua jenis hak: tabnya sendiri
         self.assertEqual(sorted(re.findall(r'id="b-(tpl-[\w-]+)"', tugas)),
                          ["tpl-surat_tugas"])
