@@ -118,6 +118,11 @@ def hgb_badan_hukum(d):
     return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HGBBH"
 
 
+def hak_pakai_badan_hukum(d):
+    """Benar bila berkas ini Hak Pakai untuk badan hukum (tata naskah risalah/sk-hpbh)."""
+    return (d.get("jenis_hak_rekomendasi") or d.get("jenis_hak_dimohon")) == "HPBH"
+
+
 # Sebutan Hak Pakai menurut Pasal 111 ayat (1) Permen ATR/BPN 18/2021: Hak Pakai
 # dengan jangka waktu untuk perorangan dan badan hukum, Hak Pakai selama
 # dipergunakan untuk instansi pemerintah. Risalah menulisnya huruf kecil,
@@ -799,6 +804,8 @@ def periksa(k, berkas_id):
         m += _periksa_instansi(d, penerima)
     if hgb_badan_hukum(d) and penerima:
         m += _periksa_hgb(d, penerima)
+    if hak_pakai_badan_hukum(d) and penerima:
+        m += _periksa_hpbh(d, penerima)
 
     # --- kegiatan yang sah untuk jenis hak ini
     if d["jenis_kegiatan"] not in [x.strip() for x in hak["kegiatan_boleh"].split(",")]:
@@ -1130,6 +1137,108 @@ def penanda_hgb(c, d):
     }
 
 
+# Sebutan hak yang ditetapkan tata naskah Hak Pakai Badan Hukum (Pasal 111 ayat (1)
+# huruf a Permen ATR/BPN 18/2021). Ditulis tetap di template; di sini hanya untuk
+# kalimat yang disusun konteks.
+SEBUTAN_HPBH = "Hak Pakai dengan Jangka Waktu"
+# Jenis hak yang dimohon yang dianggap sama dengan yang ditetapkan: berkas yang
+# memohon salah satunya tidak mencetak kalimat «… direkomendasikan …».
+_DIMOHON_SAMA_HPBH = ("HPBH", "HP")
+
+
+def _dokumen_tata_ruang(d):
+    """Dokumen kesesuaian tata ruang. Persetujuan KKPR tidak memuat kata «tata
+    ruang», jadi «pemanfaatan ruang» ikut jadi cadangan pencarian."""
+    return (_dokumen_khusus(d, "tata_ruang", "tata ruang")
+            or _dokumen_khusus(d, "tata_ruang", "pemanfaatan ruang"))
+
+
+def _periksa_hpbh(d, penerima):
+    """Pemeriksaan yang hanya berlaku untuk berkas Hak Pakai Badan Hukum."""
+    m = []
+    if (penerima.get("jenis_subjek") or "perorangan") == "badan_hukum":
+        bh = penerima.get("badan_hukum") or {}
+        kurang = [label for kolom, label in (
+            ("kedudukan", "kedudukan"), ("bidang_usaha", "bidang usaha"),
+            ("akta_tanggal", "tanggal akta pendirian"), ("notaris", "notaris akta pendirian"),
+            ("pengesahan_nomor", "nomor pengesahan"), ("nib", "NIB/OSS"),
+            ("wakil_nama", "pengurus yang mewakili"))
+            if not (bh.get(kolom) or "").strip()]
+        if kurang:
+            m.append(("peringatan", "Badan hukum: " + ", ".join(kurang) + " belum diisi — "
+                                    "dicetak di Uraian mengenai Pemohon dan telaah subjek "
+                                    "Risalah, dan Menimbang SK. Isi di tab Pihak."))
+    if not _dokumen_tata_ruang(d):
+        m.append(("peringatan", "Dokumen kesesuaian tata ruang (PKKPR / KKPR) belum "
+                                "tercatat — kalimat «telah dilengkapi …» tidak dicetak. "
+                                "Isi di tab Dokumen."))
+    return m
+
+
+def _daftar_pertimbangan(teks):
+    """Isian pertimbangan lapangan → satu butir per baris, tanpa tanda baca akhir
+    (template menambahkan «;» sendiri)."""
+    hasil = []
+    for baris in (teks or "").splitlines():
+        baris = baris.strip().rstrip(";.,").strip()
+        if baris:
+            hasil.append({"uraian": baris})
+    return hasil
+
+
+def penanda_hpbh(c, d):
+    """Penanda tata naskah Hak Pakai Badan Hukum (risalah/sk-hpbh).
+
+    Sama seperti penanda_hgb: tidak dimasukkan ke bangun(), supaya rekaman acuan
+    konteks berkas lain tidak berubah. Rincian badan hukumnya (akta, pengesahan,
+    kedudukan, kuasa) disusun penanda_hgb lalu diberi awalan hpbh_; yang khas Hak
+    Pakai disusun di sini. Bagian yang bisa kosong tidak menyisakan kata gantung.
+    """
+    hgb = penanda_hgb(c, d)
+    bh = penerima_hak(d).get("badan_hukum") or {}
+    nama = (penerima_hak(d).get("nama") or "").strip()
+    t = d.get("tanah") or {}
+    nib = (bh.get("nib") or "").strip()
+
+    # Permohonan jenis hak lain (mis. HGB) yang oleh Panitia direkomendasikan
+    # menjadi Hak Pakai: Risalah menyebut yang dimohon, lalu rekomendasinya.
+    kode_dimohon = d.get("jenis_hak_dimohon") or "HPBH"
+    rekomendasi = kode_dimohon not in _DIMOHON_SAMA_HPBH
+    dimohon = (d.get("hak") or {}).get("nama", "") if rekomendasi else SEBUTAN_HPBH
+
+    tata_ruang = _teks_dokumen(_dokumen_tata_ruang(d))
+    hasil = {f"hpbh_{kunci[4:]}": nilai for kunci, nilai in hgb.items()
+             if kunci in ("hgb_kedudukan", "hgb_kedudukan_lengkap", "hgb_jalan",
+                          "hgb_jenis_tanah", "hgb_akta_pendirian", "hgb_pengesahan_frasa",
+                          "hgb_dasar_bentuk", "hgb_pemohon_bertindak", "hgb_asal_frasa",
+                          "hgb_berdasarkan_sppf")}
+    hasil.update({
+        "hpbh_hak_dimohon": dimohon,
+        "hpbh_direkomendasikan": rekomendasi,
+        "hpbh_rekomendasi_frasa": (f" direkomendasikan untuk diberikan {SEBUTAN_HPBH} sehingga"
+                                   if rekomendasi else ""),
+        "hpbh_data_fisik": (
+            f"belum memenuhi persyaratan permohonan {dimohon} yang diajukan oleh {nama} dan "
+            f"direkomendasikan untuk diberikan {SEBUTAN_HPBH}" if rekomendasi else
+            f"telah memenuhi persyaratan permohonan {SEBUTAN_HPBH} yang diajukan oleh {nama}"),
+        "hpbh_aspek_yuridis": (
+            f"belum memenuhi persyaratan pemberian {dimohon} sehingga dipertimbangkan untuk "
+            f"diberikan {SEBUTAN_HPBH}" if rekomendasi else
+            "telah memenuhi dan sesuai dengan peraturan perundang undangan yang berlaku"),
+        "hpbh_dapat_diberikan": (
+            f"belum dapat diberikan dan dipertimbangkan untuk diberikan {SEBUTAN_HPBH}"
+            if rekomendasi else "dapat diberikan"),
+        "hpbh_nib_frasa": (", selain itu pemohon telah memenuhi kewajiban untuk mendaftarkan "
+                           "perusahaannya sebagaimana dimaksud dengan diterbitkannya Nomor "
+                           f"Induk Berusaha : {nib}" if nib else ""),
+        "hpbh_status_frasa": hgb["hgb_asal_frasa"] or " yang belum dilekati dengan sesuatu Hak",
+        "hpbh_tata_ruang": tata_ruang,
+        "hpbh_tata_ruang_frasa": f" dan telah dilengkapi {tata_ruang}" if tata_ruang else "",
+        "hpbh_pertimbangan": _daftar_pertimbangan(t.get("pertimbangan_lapang")),
+    })
+    return hasil
+
+
 def _kecil_awal(s):
     s = (s or "").strip()
     return s[:1].lower() + s[1:]
@@ -1297,7 +1406,7 @@ def konteks_contoh(k):
             c, d = bangun(k, r["id"])
             # penanda surat tugas dan instansi ikut, supaya halaman Template mengenalinya
             return dict(c, **penanda_surat_tugas(c, d), **penanda_instansi(c, d),
-                        **penanda_hgb(c, d)), r["id"]
+                        **penanda_hgb(c, d), **penanda_hpbh(c, d)), r["id"]
         except Exception:                                          # noqa: BLE001
             continue
     return {}, None

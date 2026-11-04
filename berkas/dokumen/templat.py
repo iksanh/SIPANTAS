@@ -43,12 +43,15 @@ VARIAN = {
     "hptp": "Hak Pakai Tanah Pemerintah",
     # Hak Guna Bangunan untuk badan hukum (jenis hak HGBBH)
     "hgbbh": "HGB Badan Hukum",
+    # Hak Pakai dengan jangka waktu untuk badan hukum (jenis hak HPBH)
+    "hpbh": "Hak Pakai Badan Hukum",
 }
 # Varian yang hanya punya sebagian dari ketiga dokumen. Dokumen yang tidak
 # disebut tidak didaftarkan (tidak muncul di halaman Template), sehingga
 # kunci() memakai template bakunya: HGB Badan Hukum memakai BAP baku.
 DOKUMEN_VARIAN = {
     "hgbbh": ("risalah", "sk"),
+    "hpbh": ("risalah", "sk"),
 }
 # Bukan tata naskah, jadi tidak ikut perkalian DOKUMEN x VARIAN di _susun_jenis.
 VARIAN_LOKET = "loket"
