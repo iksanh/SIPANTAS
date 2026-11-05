@@ -1735,6 +1735,370 @@
     });
   }
 
+  /* ------------- unggah dokumen: pilah, verifikasi jenis, validasi data ------------- */
+  /* Kartu [data-unggah] (web._panel_unggah). Tiga layar dalam satu kartu:
+       1. ringkasan  — tiap file dikirim ke /unggah, server membaca & memilah
+       2. verifikasi — "Apakah ini KTP?" satu dokumen per layar
+       3. validasi   — usulan isian per dokumen, diterapkan ke formulir
+     Tidak ada fetch yang menulis isian berkas; penyimpanan tetap lewat Simpan. */
+  var LABEL_ISIAN = { batas_utara: "Batas utara", batas_timur: "Batas timur",
+    batas_selatan: "Batas selatan", batas_barat: "Batas barat", luas_surat: "Luas menurut surat (m²)",
+    baku_sppf: "Dokumen baku: SPPF" };
+  var LABEL_PIHAK = [["nama", "Nama"], ["nik", "NIK"], ["ttl", "Tempat, tanggal lahir"],
+    ["jenis_kelamin", "Jenis kelamin"], ["pekerjaan", "Pekerjaan"], ["alamat", "Alamat"]];
+
+  function kolomBanding(kini, baru, kunci) {
+    /* Satu baris tabel validasi: kosong -> dicentang; sama -> "sama"; beda -> bentrok. */
+    var sama = String(kini || "").trim().toLowerCase() === String(baru || "").trim().toLowerCase();
+    var cek = sama ? '<span class="petunjuk">sama</span>' :
+      '<input type="checkbox" data-pakai="' + escOcr(kunci) + '"' + (kini ? "" : " checked") + ">";
+    return { sama: sama, html: '<td>' + cek + "</td>", kelas: (!sama && kini) ? ' class="bentrok"' : "" };
+  }
+
+  function tabelBanding(baris) {
+    return '<div class="tabel-bungkus"><table class="ocr-pratinjau"><thead><tr><th></th><th>Isian</th>' +
+      "<th>Terbaca</th><th>Isian sekarang</th></tr></thead><tbody>" + baris.join("") + "</tbody></table></div>";
+  }
+
+  function nilaiForm(form, nama) { var el = form.elements[nama]; return el && el.value != null ? el.value : ""; }
+
+  function semuaPihakForm(form) {
+    var hasil = [];
+    if (nilaiForm(form, "penerima_nama")) hasil.push({ nama: nilaiForm(form, "penerima_nama"), nik: nilaiForm(form, "penerima_nik") });
+    form.querySelectorAll('[data-dinamis="lain"] .baris').forEach(function (b) {
+      var n = b.querySelector('[name="lain_nama"]'), k = b.querySelector('[name="lain_nik"]');
+      if (n && n.value.trim()) hasil.push({ nama: n.value.trim(), nik: k ? k.value.trim() : "" });
+    });
+    return hasil;
+  }
+
+  function tambahDokumen(form, uraian) {
+    var w = form.querySelector('[data-dinamis="dokumen"]');
+    if (!w) return 0;
+    var ada = Array.prototype.some.call(w.querySelectorAll('[name="dokumen_uraian"]'), function (t) {
+      return t.value.trim().toLowerCase() === uraian.trim().toLowerCase(); });
+    if (ada) return 0;
+    var contoh = w.querySelector("template");
+    if (!contoh) return 0;
+    w.insertBefore(document.importNode(contoh.content, true), contoh);
+    nomori(w);
+    var baris = contoh.previousElementSibling;
+    return setelMedan(baris.querySelector('[name="dokumen_uraian"]'), uraian);
+  }
+
+  /* Pratinjau umum untuk KTP, KK, SPPF, dan dokumen lain (bentuk Hasil di ekstrak.py). */
+  function umumPratinjau(h, k) {
+    var form = k.form, w = k.wadah, ingat = (h.peringatan || []).slice();
+    var urutan = Object.keys(LABEL_ISIAN);
+    var isian = Object.keys(h.isian || {}).filter(function (x) { return form.elements[x]; })
+      .sort(function (a, b) { return (urutan.indexOf(a) + 1 || 99) - (urutan.indexOf(b) + 1 || 99); });
+    var bagian = [];
+
+    if (isian.length) bagian.push("<div data-tabel-isian></div>");
+    function gambarIsian() {
+      var t = w.querySelector("[data-tabel-isian]");
+      if (!t) return;
+      t.innerHTML = tabelBanding(isian.map(function (x) {
+        var b = kolomBanding(nilaiForm(form, x), h.isian[x], "isian:" + x);
+        return "<tr" + b.kelas + ">" + b.html + "<td>" + escOcr(LABEL_ISIAN[x] || x) + "</td><td><b>" +
+          escOcr(h.isian[x]) + '</b></td><td class="petunjuk">' + (escOcr(nilaiForm(form, x)) || "—") + "</td></tr>";
+      }));
+    }
+
+    /* KTP: satu pihak, tujuannya dipilih petugas. KK: anggota hanya dicocokkan. */
+    var ktp = k.jenis === "ktp" && h.pihak && h.pihak[0];
+    if (k.jenis === "kk") {
+      var ada = semuaPihakForm(form);
+      if (ada.length) {
+        (h.pihak || []).forEach(function (p) {
+          var cocok = ada.some(function (q) {
+            return (p.nik && q.nik === p.nik) || q.nama.toLowerCase() === p.nama.toLowerCase(); });
+          if (!cocok) ingat.push(p.nama + " (" + p.nik + ") tercantum di KK tetapi tidak ada di daftar pihak.");
+        });
+      }
+    }
+    if (ktp) {
+      var contohPeran = form.querySelector('[data-dinamis="lain"] template');
+      var peran = contohPeran && contohPeran.content.querySelector('[name="lain_peran"]');
+      var opsiPeran = peran ? peran.innerHTML : "";
+      bagian.push('<div class="grid g2" style="margin:.4rem 0"><div><label>Masukkan ke</label>' +
+        '<select data-tujuan><option value="penerima">Penerima hak / pemohon</option>' +
+        '<option value="lain">Pihak lain</option></select></div>' +
+        (opsiPeran ? '<div data-peran-bungkus><label>Peran pihak lain</label><select data-peran>' + opsiPeran +
+          "</select></div>" : "") + "</div><div data-tabel-pihak></div>");
+    }
+    var dok = h.dokumen || [];
+    if (dok.length) {
+      bagian.push('<p style="margin:.6rem 0 .3rem"><b>Dokumen tambahan</b></p>' + dok.map(function (d, i) {
+        return '<label class="pilihan"><input type="checkbox" data-dok="' + i + '" checked> ' +
+          escOcr(d.uraian) + "</label>";
+      }).join("<br>"));
+    }
+    w.innerHTML = daftarIngat({ peringatan: ingat }) + (bagian.length ? bagian.join("") +
+      '<p class="petunjuk">Yang dicentang menimpa isian sekarang. Yang berwarna berbeda dengan isian yang sudah ada.</p>' +
+      '<button type="button" class="btn utama kecil" data-ocr-terapkan>Terapkan ke formulir</button>' :
+      '<p class="petunjuk">Tidak ada isian yang bisa diusulkan dari dokumen ini.</p>');
+
+    var tujuan = w.querySelector("[data-tujuan]"), pilihPeran = w.querySelector("[data-peran]");
+    function barisTujuan() {
+      if (!tujuan || tujuan.value === "penerima") return null;
+      var semua = form.querySelectorAll('[data-dinamis="lain"] .baris');
+      return Array.prototype.filter.call(semua, function (b) {
+        var n = b.querySelector('[name="lain_nik"]'), m = b.querySelector('[name="lain_nama"]');
+        return (ktp.nik && n && n.value.trim() === ktp.nik) ||
+          (m && m.value.trim().toLowerCase() === ktp.nama.toLowerCase());
+      })[0] || null;
+    }
+    function gambarPihak() {
+      if (!w.querySelector("[data-tabel-pihak]")) return;   // sudah diterapkan
+      var lain = tujuan.value === "lain", b = barisTujuan();
+      var bungkus = w.querySelector("[data-peran-bungkus]");
+      if (bungkus) bungkus.hidden = !lain;
+      var kolom = LABEL_PIHAK.filter(function (x) { return !(lain && x[0] === "jenis_kelamin"); });
+      w.querySelector("[data-tabel-pihak]").innerHTML = tabelBanding(kolom.map(function (x) {
+        var kini = lain ? (b ? (b.querySelector('[name="lain_' + x[0] + '"]') || {}).value || "" : "")
+          : nilaiForm(form, "penerima_" + x[0]);
+        var c = kolomBanding(kini, ktp[x[0]], "pihak:" + x[0]);
+        return ktp[x[0]] ? "<tr" + c.kelas + ">" + c.html + "<td>" + escOcr(x[1]) + "</td><td><b>" +
+          escOcr(ktp[x[0]]) + '</b></td><td class="petunjuk">' + (escOcr(kini) || "—") + "</td></tr>" : "";
+      }));
+    }
+    /* Penerima yang sudah berisi orang lain -> usulan pindah ke Pihak lain,
+       selama petugas belum memilih tujuannya sendiri. */
+    var tujuanDisentuh = false;
+    function tujuanBawaan() {
+      if (!ktp || tujuanDisentuh) return;
+      var nama = nilaiForm(form, "penerima_nama"), nik = nilaiForm(form, "penerima_nik");
+      var orangLain = !!nama && (ktp.nik ? nik !== ktp.nik : nama.toLowerCase() !== ktp.nama.toLowerCase());
+      tujuan.value = orangLain ? "lain" : "penerima";
+    }
+    if (ktp) tujuan.addEventListener("change", function () { tujuanDisentuh = true; gambarPihak(); });
+    function segarkan() { gambarIsian(); if (ktp) { tujuanBawaan(); gambarPihak(); } }
+    segarkan();
+    /* Isian sekarang bisa berubah sesudah pratinjau dibuat (diketik petugas, atau
+       dokumen lain diterapkan lebih dulu). Tabelnya dihitung ulang supaya kolom
+       "Isian sekarang" dan centang bawaannya tidak basi — tanpa ini KTP kedua
+       bisa menimpa penerima yang baru diisi KTP pertama. Perubahan di dalam
+       pratinjau ini sendiri (mencentang) tidak memicu hitung ulang. */
+    form.addEventListener("change", function (ev) {
+      if (!w.isConnected || w.contains(ev.target)) return;
+      segarkan();
+    });
+
+    return function terapkan() {
+      var n = 0, dipakai = function (kunci) {
+        var c = w.querySelector('[data-pakai="' + kunci + '"]'); return c && c.checked; };
+      isian.forEach(function (x) { if (dipakai("isian:" + x)) n += setelMedan(form.elements[x], h.isian[x]); });
+      if (ktp) {
+        if (tujuan.value === "penerima") {
+          if (nilaiForm(form, "penerima_jenis_subjek") === "") n += setelMedan(form.elements.penerima_jenis_subjek, "perorangan");
+          LABEL_PIHAK.forEach(function (x) {
+            if (dipakai("pihak:" + x[0])) n += setelMedan(form.elements["penerima_" + x[0]], ktp[x[0]]);
+          });
+        } else {
+          var b = barisTujuan() || barisLain(form, { nama: ktp.nama, nik: ktp.nik });
+          if (b) {
+            if (pilihPeran) n += setelMedan(b.querySelector('[name="lain_peran"]'), pilihPeran.value);
+            LABEL_PIHAK.forEach(function (x) {
+              if (x[0] !== "jenis_kelamin" && dipakai("pihak:" + x[0]))
+                n += setelMedan(b.querySelector('[name="lain_' + x[0] + '"]'), ktp[x[0]]);
+            });
+          }
+        }
+      }
+      dok.forEach(function (d, i) {
+        var c = w.querySelector('[data-dok="' + i + '"]');
+        if (c && c.checked) n += tambahDokumen(form, d.uraian);
+      });
+      return n ? "<b>" + n + " isian diisi.</b> Periksa isian yang berwarna di tab-tab berikutnya, lalu tekan " +
+        "<b>Simpan</b>." : "";
+    };
+  }
+
+  function pasangUnggah() {
+    document.querySelectorAll("[data-unggah]").forEach(function (kartu) {
+      var form = kartu.closest("form");
+      var masukan = kartu.querySelector("[data-unggah-berkas]");
+      var tombol = kartu.querySelector("[data-unggah-baca]");
+      var isi = kartu.querySelector("[data-unggah-isi]");
+      if (!form || !masukan || !tombol || !isi) return;
+      var JENIS = {};
+      try { JENIS = JSON.parse(kartu.dataset.jenis || "{}"); } catch (ex) { /* biarkan kosong */ }
+      var dokumen = [], galat = [], posisi = 0;
+
+      function minta(url, data) {
+        var opsi = { credentials: "same-origin", headers: { Accept: "application/json" } };
+        if (data) {
+          if (form.elements._csrf) data.set("_csrf", form.elements._csrf.value);
+          opsi.method = "POST";
+          opsi.body = data;
+        }
+        return fetch(url, opsi).then(function (r) {
+          if (r.status === 401) throw new Error("Sesi habis — muat ulang halaman lalu masuk lagi.");
+          return r.json().catch(function () {
+            throw new Error(r.status === 400 ? "Halaman sudah terlalu lama terbuka — muat ulang lalu coba lagi."
+              : "Jawaban server tidak terbaca (" + r.status + ").");
+          }).then(function (j) { if (!r.ok || j.galat) throw new Error(j.galat || "Gagal (" + r.status + ")."); return j; });
+        });
+      }
+
+      function pesan(kelas, html) {
+        isi.innerHTML = '<div class="pesan ' + kelas + '" style="margin:0"><div>' + html + "</div></div>";
+      }
+
+      function halTeks(d) {
+        return d.hal_awal === d.hal_akhir ? "hal. " + d.hal_awal : "hal. " + d.hal_awal + "–" + d.hal_akhir;
+      }
+
+      /* ---- layar 1: ringkasan ---- */
+      function ringkasan() {
+        var baris = dokumen.map(function (d) {
+          var yakin = d.jenis_tebakan === "tidak_terbaca" ? '<span class="cap merah">tidak terbaca</span>'
+            : d.yakin >= 0.6 ? '<span class="cap hijau">✓ yakin</span>' : '<span class="cap kuning">? kurang yakin</span>';
+          var status = d.status === "pasti" ? "✓ " + escOcr(JENIS[d.jenis] || d.jenis)
+            : d.status === "diabaikan" ? "diabaikan" : "";
+          return "<tr><td>" + escOcr(d.nama) + (d.kembar ? ' <span class="cap abu">sudah pernah diunggah</span>' : "") +
+            "</td><td>" + halTeks(d) + "</td><td>" + escOcr(d.label) + "</td><td>" + yakin + "</td><td>" + status + "</td></tr>";
+        }).join("");
+        var salah = galat.map(function (g) { return "<li>" + escOcr(g) + "</li>"; }).join("");
+        isi.innerHTML = (salah ? '<div class="pesan galat" style="margin:0 0 .6rem"><ul style="margin:0 0 0 1.1rem">' + salah + "</ul></div>" : "") +
+          (baris ? '<div class="tabel-bungkus"><table class="ocr-pratinjau"><thead><tr><th>File</th><th>Halaman</th>' +
+            "<th>Jenis tebakan</th><th></th><th>Dipastikan</th></tr></thead><tbody>" + baris + "</tbody></table></div>" +
+            '<button type="button" class="btn utama kecil" data-mulai-verifikasi>Mulai verifikasi</button>' : "");
+        var mulai = isi.querySelector("[data-mulai-verifikasi]");
+        if (mulai) mulai.addEventListener("click", function () { posisi = 0; verifikasi(); });
+      }
+
+      /* ---- layar 2: verifikasi jenis ---- */
+      function opsiJenis(pilih) {
+        return '<option value="">— pilih jenis —</option>' + Object.keys(JENIS).map(function (k) {
+          return '<option value="' + k + '"' + (k === pilih ? " selected" : "") + ">" + escOcr(JENIS[k]) + "</option>";
+        }).join("");
+      }
+
+      function verifikasi() {
+        var d = dokumen[posisi];
+        if (!d) return validasi();
+        var terbaca = d.jenis_tebakan !== "tidak_terbaca";
+        isi.innerHTML = '<div class="unggah-verifikasi">' +
+          '<div class="unggah-gambar"><img alt="Halaman ' + d.hal_awal + " " + escOcr(d.nama) + '" src="/unggah/dok/' +
+            d.id + "/gambar?hal=" + d.hal_awal + '"></div>' +
+          '<div><p class="petunjuk" style="margin-top:0">Dokumen ' + (posisi + 1) + " dari " + dokumen.length +
+            " · " + escOcr(d.nama) + " · " + halTeks(d) + "</p>" +
+          (terbaca ? '<p class="unggah-tanya">Apakah ini <b>' + escOcr(d.label) + "</b>?</p>" +
+            '<div class="aksi-baris" data-tanya><button type="button" class="btn utama" data-ya>Ya</button>' +
+            '<button type="button" class="btn" data-bukan>Bukan</button></div>'
+            : '<p class="unggah-tanya">Halaman ini <b>tidak terbaca</b>. Dokumen apa ini?</p>') +
+          '<div data-pilih' + (terbaca ? " hidden" : "") + '><label>Ini adalah:</label>' +
+            '<div class="aksi-baris"><select data-jenis-pilih>' + opsiJenis(terbaca ? "" : "lainnya") + "</select>" +
+            '<button type="button" class="btn utama" data-pakai-jenis>Pakai jenis ini</button>' +
+            '<button type="button" class="btn sunyi" data-abaikan>Abaikan</button></div></div>' +
+          '<div class="aksi-baris" style="margin-top:1rem">' +
+            (posisi ? '<button type="button" class="btn kecil" data-mundur>&larr; Sebelumnya</button>' : "") +
+            '<button type="button" class="btn kecil sunyi" data-ke-ringkasan>Ringkasan</button></div>' +
+          '<div data-pesan-verifikasi></div></div></div>';
+
+        function jawab(jenis, status) {
+          var data = new FormData();
+          data.set("jenis", jenis || "");
+          data.set("status", status);
+          minta("/unggah/dok/" + d.id + "/jenis", data).then(function () {
+            d.status = status;
+            d.jenis = status === "pasti" ? jenis : null;
+            posisi += 1;
+            verifikasi();
+          }).catch(function (ex) {
+            isi.querySelector("[data-pesan-verifikasi]").innerHTML =
+              '<div class="pesan galat">' + escOcr(ex.message || ex) + "</div>";
+          });
+        }
+        var q = function (s) { return isi.querySelector(s); };
+        if (q("[data-ya]")) q("[data-ya]").addEventListener("click", function () { jawab(d.jenis_tebakan, "pasti"); });
+        if (q("[data-bukan]")) q("[data-bukan]").addEventListener("click", function () {
+          q("[data-tanya]").hidden = true;
+          q("[data-pilih]").hidden = false;
+          q("[data-jenis-pilih]").focus();
+        });
+        q("[data-pakai-jenis]").addEventListener("click", function () {
+          var pilih = q("[data-jenis-pilih]");
+          if (!pilih.value) { pilih.focus(); return; }
+          jawab(pilih.value, "pasti");
+        });
+        q("[data-abaikan]").addEventListener("click", function () { jawab("", "diabaikan"); });
+        if (q("[data-mundur]")) q("[data-mundur]").addEventListener("click", function () { posisi -= 1; verifikasi(); });
+        q("[data-ke-ringkasan]").addEventListener("click", ringkasan);
+      }
+
+      /* ---- layar 3: validasi data ---- */
+      function validasi() {
+        var pasti = dokumen.filter(function (d) { return d.status === "pasti" && !d.diekstrak; });
+        if (!pasti.length) {
+          ringkasan();
+          isi.insertAdjacentHTML("afterbegin", '<div class="pesan ingat" style="margin:0 0 .6rem"><div>' +
+            "Tidak ada dokumen baru untuk diekstrak.</div></div>");
+          return;
+        }
+        isi.innerHTML = '<p class="petunjuk" style="margin-top:0">Periksa usulan tiap dokumen, terapkan yang benar, ' +
+          "lalu tekan <b>Simpan</b>. Yang tidak diterapkan tidak ikut tersimpan.</p>" + pasti.map(function (d) {
+            return '<div class="unggah-validasi" data-dok-id="' + d.id + '"><h3>' + escOcr(JENIS[d.jenis] || d.jenis) +
+              ' <span class="petunjuk">' + escOcr(d.nama) + " · " + halTeks(d) + "</span></h3>" +
+              '<div data-wadah><div class="pesan"><div>Mengekstrak…</div></div></div></div>';
+          }).join("") + '<button type="button" class="btn kecil sunyi" data-ke-ringkasan>Kembali ke ringkasan</button>';
+        isi.querySelector("[data-ke-ringkasan]").addEventListener("click", ringkasan);
+        pasti.reduce(function (rantai, d) {
+          return rantai.then(function () {
+            var wadah = isi.querySelector('[data-dok-id="' + d.id + '"] [data-wadah]');
+            return minta("/unggah/dok/" + d.id + "/ekstrak").then(function (j) {
+              d.diekstrak = true;
+              var olah = OLAH_OCR[j.jenis] || umumPratinjau;
+              var terapkan = olah(j.hasil, { form: form, wadah: wadah, jenis: j.jenis });
+              var t = wadah.querySelector("[data-ocr-terapkan]");
+              if (t) t.addEventListener("click", function () {
+                var hasil = terapkan();
+                picuOcr(form, "change");
+                wadah.innerHTML = '<div class="pesan ' + (hasil ? "baik" : "ingat") + '" style="margin:0"><div>' +
+                  (hasil || "Tidak ada isian yang berubah — formulirnya sudah sama dengan dokumen.") + "</div></div>";
+              });
+            }).catch(function (ex) {
+              wadah.innerHTML = '<div class="pesan galat" style="margin:0"><div>' + escOcr(ex.message || ex) + "</div></div>";
+            });
+          });
+        }, Promise.resolve());
+      }
+
+      tombol.addEventListener("click", function () {
+        var berkas = Array.prototype.slice.call(masukan.files || []);
+        if (!berkas.length) { masukan.focus(); return; }
+        tombol.disabled = true;
+        tombol.classList.add("sibuk");
+        galat = [];
+        berkas.reduce(function (rantai, f, i) {
+          return rantai.then(function () {
+            pesan("", "Membaca file " + (i + 1) + " dari " + berkas.length + ": <b>" + escOcr(f.name) +
+              "</b>… hasil scan bisa beberapa detik per halaman.");
+            var data = new FormData();
+            data.set("berkas", f, f.name);
+            if (kartu.dataset.berkasId) data.set("berkas_id", kartu.dataset.berkasId);
+            else data.set("titipan", kartu.dataset.titipan || "");
+            return minta("/unggah", data).then(function (j) {
+              j.dokumen.forEach(function (d) {
+                dokumen.push(Object.assign(d, { nama: j.nama_asli, kembar: j.kembar, status: "baru" }));
+              });
+            }).catch(function (ex) {
+              var m = String(ex.message || ex);
+              galat.push(m.indexOf(f.name) === 0 ? m : f.name + ": " + m);
+            });
+          });
+        }, Promise.resolve()).then(function () {
+          tombol.disabled = false;
+          tombol.classList.remove("sibuk");
+          masukan.value = "";
+          ringkasan();
+        });
+      });
+    });
+  }
+
   /* Pada formulir bertanda data-jaga-ubah: meninggalkan halaman sesudah
      mengubah sesuatu memunculkan pertanyaan bawaan peramban. Menyimpan
      (mengirim formulirnya) tentu tidak ditanya. */
@@ -1774,6 +2138,7 @@
     pasangSusun();
     pasangSinkron();
     pasangOcr();
+    pasangUnggah();
     pasangJagaUbah();
   });
 })();

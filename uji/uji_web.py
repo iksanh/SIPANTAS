@@ -953,9 +953,9 @@ class BerkasBaru(Dasar):
     def _tombol(self, isi):
         return re.findall(r'role="tab"[^>]*data-panel="([^"]+)"', isi)
 
-    def test_enam_langkah_berurutan(self):
+    def test_tujuh_langkah_berurutan(self):
         isi = self.klien(masuk=True).get("/berkas/baru").get_data(as_text=True)
-        urut = ["p-berkas", "p-pihak", "p-tanah", "p-asal", "p-dokumen", "p-foto"]
+        urut = ["p-unggah", "p-berkas", "p-pihak", "p-tanah", "p-asal", "p-dokumen", "p-foto"]
         self.assertEqual(self._tombol(isi), urut)
         self.assertEqual(self._panel(isi), urut)
         self.assertIn('class="tab tahap"', isi)
@@ -979,16 +979,17 @@ class BerkasBaru(Dasar):
 
     def test_tiap_langkah_punya_petunjuk_dan_tombol_maju(self):
         isi = self.klien(masuk=True).get("/berkas/baru").get_data(as_text=True)
-        self.assertEqual(isi.count("tahap-petunjuk"), 6)
-        # lima langkah pertama punya Lanjut + Lewati, yang terakhir punya Simpan
-        self.assertEqual(isi.count("data-tahap-maju"), 10)
-        self.assertEqual(isi.count("data-tahap-mundur"), 5)
+        self.assertEqual(isi.count("tahap-petunjuk"), 7)
+        # enam langkah pertama punya Lanjut + Lewati, yang terakhir punya Simpan
+        self.assertEqual(isi.count("data-tahap-maju"), 12)
+        self.assertEqual(isi.count("data-tahap-mundur"), 6)
         self.assertEqual(isi.count("Simpan berkas"), 1)
 
-    def test_tiga_langkah_akhir_ditandai_boleh_menyusul(self):
+    def test_langkah_boleh_menyusul_ditandai(self):
+        """Unggah dokumen (pertama) dan tiga langkah terakhir."""
         isi = self.klien(masuk=True).get("/berkas/baru").get_data(as_text=True)
         bilah = isi.split('class="tab tahap"')[1].split("</div>")[0]
-        self.assertEqual(bilah.count("boleh nanti"), 3)
+        self.assertEqual(bilah.count("boleh nanti"), 4)
 
     def test_tanpa_tombol_simpan_di_kepala_saat_membuat(self):
         """Satu-satunya Simpan ada di ujung langkah terakhir. Kalau ada juga di
@@ -1033,7 +1034,7 @@ class BerkasBaru(Dasar):
         p.post("/masuk", data={"username": "baruuji", "sandi": "rahasia123"})
         isi = p.get("/berkas/baru").get_data(as_text=True)
         self.assertIn('class="tab tahap"', isi)
-        self.assertEqual(len(self._tombol(isi)), 6)
+        self.assertEqual(len(self._tombol(isi)), 7)
 
     def test_berkas_statis_bercap_versi(self):
         """Tanpa cap, peramban bisa memakai app.js lama bersama halaman baru —

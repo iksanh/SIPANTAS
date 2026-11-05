@@ -229,6 +229,10 @@ def _isian_tanah_khusus(d, t):
 # berarti; tiga sisanya boleh menyusul, dan itu dikatakan terang-terangan
 # supaya petugas baru tidak merasa harus melengkapi semuanya sekaligus.
 LANGKAH_BARU = [
+    ("p-unggah", "Unggah dokumen", True,
+     "Unggah scan atau foto surat-surat pemohon sekaligus — KTP, KK, surat penguasaan "
+     "fisik, AIW, PBT. Sistem memilah jenisnya, Anda memastikan, lalu isiannya "
+     "diusulkan ke langkah-langkah berikutnya. Boleh dilewati."),
     ("p-berkas", "Jenis permohonan", False,
      "Hak apa yang dimohon dan untuk kegiatan apa. Pilihan ini menentukan template "
      "dokumen yang dipakai serta isian yang muncul di langkah berikutnya."),
@@ -809,6 +813,40 @@ def _isi_pihak(p=None):
             f'</div>')
 
 
+def _panel_unggah(d, baru):
+    """Kartu Unggah dokumen (app.js: pasangUnggah). File dibaca di server
+    (/unggah), dipilah, dipastikan jenisnya oleh petugas, lalu usulan isiannya
+    diterapkan ke formulir ini. Medan file sengaja tanpa name: filenya sudah
+    terkirim lewat /unggah, tidak ikut lagi saat Simpan.
+
+    Berkas baru belum punya id, jadi unggahannya dititipkan dengan token yang
+    ikut terkirim saat Simpan (name="titipan") dan ditautkan di sana."""
+    from .baca import ocr
+    from .baca.jenis import DAFTAR, PILIHAN
+    jenis = e(json.dumps({k: DAFTAR[k].label for k in PILIHAN}))
+    if baru:
+        import secrets
+        tujuan = f'data-titipan="{e(token := secrets.token_urlsafe(16))}"'
+        titipan = f'<input type="hidden" name="titipan" value="{e(token)}">'
+    else:
+        tujuan, titipan = f'data-berkas-id="{d["id"]}"', ""
+    pasang = ("" if ocr.TERSEDIA else
+              f'<div class="pesan ingat" style="margin:0 0 .6rem">{e(ocr.PESAN_PASANG)}</div>')
+    return f"""<div class="kartu" data-unggah {tujuan} data-jenis="{jenis}"><h2>Unggah dokumen</h2><div class="badan">
+{titipan}{pasang}
+<p class="petunjuk" style="margin-top:0">PDF, JPG, atau PNG; boleh beberapa file sekaligus, boleh
+PDF gabungan (paling banyak 30 halaman, 20 MB per file). Dibaca di server kantor ini, tidak
+dikirim ke mana pun. Tidak ada isian yang tersimpan sebelum tombol Simpan.</p>
+<div class="grid g3" style="align-items:end">
+  <div style="grid-column:span 2"><label for="f_unggah_berkas">File</label>
+  <input type="file" id="f_unggah_berkas" multiple accept="image/jpeg,image/png,application/pdf"
+   data-unggah-berkas></div>
+  <div><button type="button" class="btn" data-unggah-baca>Baca &amp; pilah</button></div>
+</div>
+<div data-unggah-isi aria-live="polite" style="margin-top:.8rem"></div>
+</div></div>"""
+
+
 def _kartu_ocr(jenis, judul, petunjuk, halaman=1, atribut="", tambahan=""):
     """Kartu "isi dari dokumen": unggah foto/scan/PDF, baca, pratinjau, terapkan.
 
@@ -1176,7 +1214,8 @@ sendiri. Baris terakhir otomatis berakhir dengan titik.</div>
     otomatis = konteks.kalimat_otomatis(d)
     slot_tampil = {x[0] for x in db.dokumen_baku(d.get("jenis_hak_dimohon"))}
     sisa = [x for x in d["dokumen"] if (x["kategori"] or "") not in slot_tampil]
-    p_dok = f"""<div class="kartu"><h2>Dokumen baku</h2><div class="badan">
+    unggah_dok = "" if baru or not boleh_ubah else _panel_unggah(d, baru=False)
+    p_dok = unggah_dok + f"""<div class="kartu"><h2>Dokumen baku</h2><div class="badan">
 <p class="petunjuk">Satu kesatuan dengan formulir permohonan: slotnya tetap, tinggal diisi.
 Yang dikosongkan tidak ikut tercetak.</p>
 {_isian_baku(d, otomatis)}
@@ -1263,6 +1302,7 @@ Yang dikosongkan tidak ikut tercetak.</p>
     if baru:
         # Berkas baru dituntun selangkah demi selangkah. Tab Sidang dan Cetak
         # sengaja tidak ikut: keduanya baru berarti setelah berkasnya ada.
+        isi_panel["p-unggah"] = _panel_unggah(d, baru=True)
         tab = _bilah_langkah(LANGKAH_BARU)
         n = len(LANGKAH_BARU)
         panel = []

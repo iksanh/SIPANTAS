@@ -131,5 +131,34 @@ class UjiRute(Dasarunggah):
         self.assertIn("pip install", j.get_json()["galat"])
 
 
+class UjiTampilan(Dasarunggah):
+    def test_langkah_unggah_pertama_di_berkas_baru(self):
+        h = self.klien(masuk=True).get("/berkas/baru").get_data(as_text=True)
+        self.assertLess(h.index("Unggah dokumen"), h.index("Jenis permohonan"))
+        self.assertIn('id="p-unggah"', h)
+        self.assertRegex(h, r'name="titipan" value="[\w-]{16,}"')
+        self.assertIn("data-unggah", h)
+        self.assertIn("data-jenis=", h)
+        self.assertIn("Surat Pernyataan Penguasaan Fisik", h)
+        self.assertNotIn("Tidak terbaca", h)
+        langkah = h[h.index('data-panel="p-unggah"'):h.index('data-panel="p-berkas"')]
+        self.assertIn("boleh nanti", langkah)
+
+    def test_unggah_di_tab_dokumen(self):
+        a = self.klien(masuk=True)
+        bid = self.buat_berkas(a)
+        h = a.get(f"/berkas/{bid}").get_data(as_text=True)
+        self.assertIn(f'data-berkas-id="{bid}"', h)
+        self.assertNotIn('name="titipan"', h)
+        self.assertNotIn('id="p-unggah"', h)
+
+    def test_baca_saja_tanpa_unggah(self):
+        pa, pb = self.petugas("tampil_a"), self.petugas("tampil_b")
+        bid = self.buat_berkas(pa)
+        j = pb.get(f"/berkas/{bid}")
+        if j.status_code == 200:
+            self.assertNotIn("data-unggah", j.get_data(as_text=True))
+
+
 if __name__ == "__main__":
     unittest.main()

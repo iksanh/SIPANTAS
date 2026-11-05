@@ -36,6 +36,12 @@ class UjiSppf(unittest.TestCase):
         self.assertEqual(i["baku_sppf"],
                          "Surat Pernyataan Penguasaan Fisik Bidang Tanah tanggal 12 Maret 2024")
 
+    def test_sppf_luas_dengan_tanda_kira_salah_baca(self):
+        for salah in ("�", "t", "+", "+/-", ""):
+            with self.subTest(salah=salah):
+                teks = c.TEKS_SPPF.replace("± 1.250", f"{salah} 1.250")
+                self.assertEqual(sppf.urai(teks)["isian"]["luas_surat"], "1250")
+
     def test_sppf_tulisan_tangan_kosong(self):
         i = sppf.urai(c.TEKS_SPPF.replace("Utara : Tanah Hasan", "Utara : "))["isian"]
         self.assertNotIn("batas_utara", i)

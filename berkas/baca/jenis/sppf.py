@@ -30,7 +30,9 @@ def urai(teks):
         v = _baris_label(teks, rf"(?:batas\s+|sebelah\s+)?{arah}")
         if v:
             isian[f"batas_{arah}"] = v
-    m = re.search(r"^\s*luas(?:\s+tanah)?\s*[:.]?\s*[±+-]?\s*([\d.,]+)", teks, re.I | re.M)
+    # Tanda "±" sering terbaca OCR sebagai huruf acak: beri ruang beberapa
+    # karakter bukan-angka di antara label dan angkanya.
+    m = re.search(r"^[ \t]*luas(?:[ \t]+tanah)?[ \t]*[:.]?[^\d\n]{0,6}?([\d][\d.,]*)", teks, re.I | re.M)
     luas = _angka_luas(m.group(1)) if m else None
     if luas:
         isian["luas_surat"] = str(round(luas))

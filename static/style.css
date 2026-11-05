@@ -1061,3 +1061,13 @@ ol.susun.sibuk{opacity:.55;pointer-events:none}
 table.ocr-pratinjau td{vertical-align:top}
 table.ocr-pratinjau td:first-child{width:2rem}
 table.ocr-pratinjau select{min-width:7rem}
+
+/* kartu "Unggah dokumen" (app.js: pasangUnggah) */
+table.ocr-pratinjau tr.bentrok td{background:var(--ingat-lembut)}
+.unggah-verifikasi{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:1rem;align-items:start}
+.unggah-gambar img{display:block;max-width:100%;height:auto;border:1px solid var(--garis);border-radius:var(--r-s);background:#fff}
+.unggah-tanya{font-size:1.1rem;margin:.2rem 0 .8rem}
+.kartu[data-unggah] [hidden]{display:none!important}
+.unggah-validasi{border-top:1px solid var(--garis);padding-top:.6rem;margin-bottom:1rem}
+.unggah-validasi h3{font-size:1rem;margin:0 0 .5rem}
+@media (max-width:680px){.unggah-verifikasi{grid-template-columns:1fr}}
