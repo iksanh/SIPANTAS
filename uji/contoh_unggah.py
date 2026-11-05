@@ -6,6 +6,56 @@ Helvetica, teks per baris) supaya uji tidak bergantung pada pustaka pembuat PDF.
 """
 import io
 
+# Teks karangan, meniru hasil OCR/lapisan teks tiap jenis dokumen.
+TEKS_KTP = """PROVINSI GORONTALO
+KABUPATEN BONE BOLANGO
+NIK : 7503074512900001
+Nama : SITI AMINAH
+Tempat/Tgl Lahir : SUWAWA, 05-12-1990
+Jenis Kelamin : PEREMPUAN Gol. Darah : O
+Alamat : DUSUN II
+RT/RW : 001/002
+Kel/Desa : BUBEYA
+Kecamatan : SUWAWA
+Agama : ISLAM
+Status Perkawinan : KAWIN
+Pekerjaan : PETANI/PEKEBUN
+Kewarganegaraan : WNI
+Berlaku Hingga : SEUMUR HIDUP"""
+
+TEKS_KK = """KARTU KELUARGA
+No. 7503070101100002
+Nama Kepala Keluarga : HASAN USMAN
+Desa/Kelurahan : BUBEYA
+No Nama Lengkap NIK Jenis Kelamin
+1 HASAN USMAN 7503071002850003 LAKI-LAKI
+2 SITI AMINAH 7503074512900001 PEREMPUAN"""
+
+TEKS_SPPF = """SURAT PERNYATAAN PENGUASAAN FISIK BIDANG TANAH
+Yang bertanda tangan di bawah ini menyatakan menguasai sebidang tanah
+Luas : ± 1.250 M2
+Batas-batas :
+Utara : Tanah Hasan
+Timur : Jalan Desa
+Selatan : Sungai
+Barat : Tanah Ali
+Bubeya, 12 Maret 2024"""
+
+TEKS_AIW = """AKTA IKRAR WAKAF
+Nomor : WT.2/001/7503071/2026
+Pada hari ini kami yang bertanda tangan di bawah ini"""
+
+TEKS_PBT = """KEMENTERIAN AGRARIA DAN TATA RUANG / BADAN PERTANAHAN NASIONAL
+PETA BIDANG TANAH
+Nomor : 36 / 2025
+NIB : 23.01.07.03.00571
+Luas : 1.349 M2"""
+
+TEKS_LAIN = """PEMERINTAH DESA BUBEYA
+SURAT KETERANGAN DOMISILI
+Nomor : 140/12/2025
+Kepala Desa Bubeya menerangkan bahwa yang bersangkutan berdomisili di desa ini."""
+
 
 def _esc(s):
     return s.replace("\\", "\\\\").replace("(", "\\(").replace(")", "\\)")
