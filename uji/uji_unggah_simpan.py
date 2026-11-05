@@ -76,15 +76,36 @@ class UjiSimpan(Dasar):
     def test_tautkan_titipan(self):
         lain = db.sisip_id(self.k, "INSERT INTO pengguna (nama,username,sandi_hash,peran) "
                                    "VALUES ('Lain','lain_tautkan','x','petugas')")
-        unggah.simpan(self.k, "a.pdf", PDF, self.uid, None, "T1")
-        unggah.simpan(self.k, "b.pdf", c.pdf_teks([c.TEKS_KTP]), self.uid, None, "T1")
-        unggah.simpan(self.k, "c.pdf", c.pdf_teks([c.TEKS_LAIN]), lain, None, "T1")
+        milik = [unggah.simpan(self.k, "a.pdf", PDF, self.uid, None, "T1")["id"],
+                 unggah.simpan(self.k, "b.pdf", c.pdf_teks([c.TEKS_KTP]), self.uid, None, "T1")["id"]]
+        orang_lain = unggah.simpan(self.k, "c.pdf", c.pdf_teks([c.TEKS_LAIN]), lain, None, "T1")["id"]
         bid = db.sisip_id(self.k, "INSERT INTO berkas (jenis_hak_dimohon,dibuat_oleh) "
                                   "VALUES ('HM', ?)", (self.uid,))
         self.assertEqual(unggah.tautkan(self.k, "T1", bid, self.uid), 2)
-        baris = self.k.execute("SELECT berkas_id, titipan FROM unggahan "
-                               "WHERE pengguna_id=?", (self.uid,)).fetchall()
-        self.assertTrue(all(r["berkas_id"] == bid and r["titipan"] is None for r in baris))
+        ambil = lambda i: self.k.execute("SELECT berkas_id, titipan FROM unggahan WHERE id=?",  # noqa: E731
+                                         (i,)).fetchone()
+        self.assertTrue(all(ambil(i)["berkas_id"] == bid and ambil(i)["titipan"] is None
+                            for i in milik))
+        self.assertIsNone(ambil(orang_lain)["berkas_id"])
+
+    @unittest.skipIf(db.postgres(), "kunci tulis tunggal hanya ada di SQLite")
+    def test_pembersihan_tidak_menahan_kunci_tulis(self):
+        """simpan() membersihkan titipan sebelum OCR yang bisa lama. Bila
+        transaksinya dibiarkan terbuka, seluruh penulisan lain di SQLite
+        tertahan sampai OCR selesai."""
+        lama = unggah.simpan(self.k, "a.pdf", PDF, self.uid, None, "T-kunci")
+        delapan = (dt.datetime.now() - dt.timedelta(days=8)).strftime("%Y-%m-%d %H:%M:%S")
+        self.k.execute("UPDATE unggahan SET dibuat=? WHERE id=?", (delapan, lama["id"]))
+        self.k.commit()
+        self.assertEqual(unggah.bersihkan_titipan(self.k), 1)
+        import sqlite3
+        lain = sqlite3.connect(db.BERKAS_DB, timeout=0.2)
+        try:
+            lain.execute("UPDATE pengaturan SET nilai=nilai WHERE 1=0")
+            lain.execute("INSERT INTO nomor_urut (jenis,kode,tahun,terakhir) VALUES ('uji','kunci',1,0)")
+            lain.commit()
+        finally:
+            lain.close()
 
     def test_hapus_semua_membuang_file(self):
         bid = db.sisip_id(self.k, "INSERT INTO berkas (jenis_hak_dimohon,dibuat_oleh) "

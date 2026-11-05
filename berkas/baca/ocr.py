@@ -51,6 +51,22 @@ class Halaman:
 
 _mesin = None
 _kunci = threading.Lock()
+# PDFium tidak aman dipakai beberapa utas sekaligus, bahkan untuk dokumen yang
+# berbeda (dokumentasi pypdfium2), sedangkan waitress melayani beberapa
+# permintaan bersamaan. Semua panggilan PDFium lewat kunci ini, dipegang per
+# halaman supaya OCR berkas tebal tidak menahan permintaan gambar orang lain.
+_KUNCI_PDF = threading.Lock()
+MAKS_PIKSEL = 40_000_000     # ±A3 pada 300 dpi; halaman lebih besar diturunkan resolusinya
+
+
+def _skala(lebar_pt, tinggi_pt, dpi=DPI_OCR):
+    """Skala render PDF: dpi/72, diturunkan bila hasilnya melebihi MAKS_PIKSEL
+    (peta A0 pada 300 dpi butuh lebih dari 1 GB memori)."""
+    s = dpi / 72
+    piksel = lebar_pt * s * tinggi_pt * s
+    if piksel > MAKS_PIKSEL:
+        s *= (MAKS_PIKSEL / piksel) ** 0.5
+    return s
 
 
 def _ocr(gambar):
@@ -148,34 +164,50 @@ def baca(nama, isi):
     jenis = _periksa(nama, isi)
     if jenis != "pdf":
         return [_baca_gambar(1, _buka_gambar(nama, isi))]
-    dok = _buka_pdf(nama, isi)
+    with _KUNCI_PDF:
+        dok = _buka_pdf(nama, isi)
+        n = len(dok)
     try:
         hasil = []
-        for i in range(len(dok)):
-            hal = dok[i]
-            teks = hal.get_textpage().get_text_range()
-            if len("".join(teks.split())) >= MIN_TEKS:
+        for i in range(n):
+            # Satu halaman rusak (atau kehabisan memori) tidak menggagalkan
+            # halaman lain: halaman itu saja yang "tidak terbaca".
+            try:
+                with _KUNCI_PDF:
+                    hal = dok[i]
+                    teks = hal.get_textpage().get_text_range()
+                    gambar_hal = None
+                    if len("".join(teks.split())) < MIN_TEKS:
+                        gambar_hal = hal.render(scale=_skala(*hal.get_size())).to_pil().convert("RGB")
+            except Exception:                                      # noqa: BLE001
+                log.exception("Halaman %s dari %s tidak bisa dibaca PDFium", i + 1, nama)
+                hasil.append(Halaman(i + 1, "", gagal=True))
+                continue
+            if gambar_hal is None:
                 hasil.append(Halaman(i + 1, teks.replace("\r\n", "\n").replace("\r", "\n")))
             else:
-                gambar = hal.render(scale=DPI_OCR / 72).to_pil().convert("RGB")
-                hasil.append(_baca_gambar(i + 1, gambar))
+                hasil.append(_baca_gambar(i + 1, gambar_hal))      # OCR di luar kunci PDFium
         return hasil
     finally:
-        dok.close()
+        with _KUNCI_PDF:
+            dok.close()
 
 
 def gambar(nama, isi, no, lebar=900):
     """PNG satu halaman (no mulai 1), dikecilkan selebar `lebar` piksel."""
     jenis = _periksa(nama, isi)
     if jenis == "pdf":
-        dok = _buka_pdf(nama, isi)
-        try:
-            if not 1 <= no <= len(dok):
-                raise GalatBaca(f"{nama}: tidak ada halaman {no}.")
-            hal = dok[no - 1]
-            g = hal.render(scale=lebar / hal.get_width()).to_pil().convert("RGB")
-        finally:
-            dok.close()
+        with _KUNCI_PDF:
+            dok = _buka_pdf(nama, isi)
+            try:
+                if not 1 <= no <= len(dok):
+                    raise GalatBaca(f"{nama}: tidak ada halaman {no}.")
+                hal = dok[no - 1]
+                g = hal.render(scale=lebar / hal.get_width()).to_pil().convert("RGB")
+            except pdfium.PdfiumError as e:
+                raise GalatBaca(f"{nama}: halaman {no} tidak bisa digambar.") from e
+            finally:
+                dok.close()
     else:
         g = _buka_gambar(nama, isi)
         if g.width > lebar:

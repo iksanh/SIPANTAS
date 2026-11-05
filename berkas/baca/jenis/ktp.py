@@ -75,4 +75,9 @@ def urai(teks):
         "alamat": ", ".join(alamat),
     }
     peringatan += periksa_nik(nik, pihak["ttl"], pihak["jenis_kelamin"])
+    jml_nik = sum(1 for b in (teks or "").splitlines() if _POLA["nik"].match(b))
+    if jml_nik > 1:
+        peringatan.append(f"Halaman ini tampaknya berisi lebih dari satu KTP ({jml_nik} baris NIK); "
+                          "hanya yang pertama diusulkan. Ketik yang lain sendiri, atau scan "
+                          "satu KTP per halaman.")
     return {"isian": {}, "pihak": [pihak], "dokumen": [], "peringatan": peringatan}

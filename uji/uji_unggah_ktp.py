@@ -37,6 +37,15 @@ class UjiKtp(unittest.TestCase):
         self.assertEqual(h["pihak"][0]["nik"], "")
         self.assertTrue(any("16" in x for x in h["peringatan"]), h["peringatan"])
 
+    def test_dua_ktp_satu_halaman_diberi_peringatan(self):
+        """KTP suami-istri sering di-scan berdua di satu lembar A4. Yang kedua
+        tidak boleh hilang diam-diam."""
+        kedua = TEKS_KTP.replace("7503074512900001", "7503071002850003").replace(
+            "SITI AMINAH", "HASAN USMAN")
+        h = ktp.urai(TEKS_KTP + "\n" + kedua)
+        self.assertEqual(h["pihak"][0]["nama"], "SITI AMINAH")
+        self.assertTrue(any("lebih dari satu KTP" in x for x in h["peringatan"]), h["peringatan"])
+
     def test_label_tak_terbaca_dikosongkan(self):
         h = ktp.urai(TEKS_KTP.replace("Pekerjaan : PETANI/PEKEBUN\n", ""))
         self.assertEqual(h["pihak"][0]["pekerjaan"], "")

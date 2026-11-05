@@ -38,7 +38,8 @@ def _ekstensi(isi):
 
 def simpan(k, nama, isi, pengguna_id, berkas_id, titipan):
     """Baca, pilah, lalu simpan satu file. GalatBaca diteruskan ke pemanggil.
-    Tidak melakukan commit; pemanggil yang memutuskan."""
+    Baris unggahannya tidak di-commit; pemanggil yang memutuskan. (Pembersihan
+    titipan lama di awal di-commit sendiri, lihat bersihkan_titipan.)"""
     bersihkan_titipan(k)
     halaman = ocr.baca(nama, isi)
     potongan = pilah.kelompokkan(halaman)
@@ -97,14 +98,24 @@ def tautkan(k, titipan, berkas_id, pengguna_id):
     return c.rowcount
 
 
-def _buang(k, baris):
+def _hapus_baris(k, baris):
     for r in baris:
         k.execute("DELETE FROM unggahan_dokumen WHERE unggahan_id=?", (r["id"],))
         k.execute("DELETE FROM unggahan WHERE id=?", (r["id"],))
+
+
+def _hapus_file(baris):
+    for r in baris:
         try:
             os.remove(jalur_file(r["nama_file"]))
         except OSError:
             pass
+
+
+def _buang(k, baris):
+    """Baris dan file sekaligus; commit-nya urusan pemanggil."""
+    _hapus_baris(k, baris)
+    _hapus_file(baris)
     return len(baris)
 
 
@@ -115,7 +126,17 @@ def hapus_semua(k, berkas_id):
 
 
 def bersihkan_titipan(k, umur_hari=UMUR_TITIPAN_HARI):
-    """Buang titipan yang tidak pernah ditautkan, baris maupun filenya."""
+    """Buang titipan yang tidak pernah ditautkan, baris maupun filenya.
+
+    Langsung di-commit: simpan() memanggilnya sebelum OCR yang bisa makan
+    waktu menit, dan transaksi tulis yang dibiarkan terbuka selama itu menahan
+    semua penulisan lain di SQLite. File baru dibuang sesudah commit, supaya
+    rollback tidak meninggalkan baris yang filenya sudah hilang."""
     batas = (dt.datetime.now() - dt.timedelta(days=umur_hari)).strftime("%Y-%m-%d %H:%M:%S")
-    return _buang(k, k.execute("SELECT id, nama_file FROM unggahan "
-                               "WHERE berkas_id IS NULL AND dibuat < ?", (batas,)).fetchall())
+    lama = k.execute("SELECT id, nama_file FROM unggahan "
+                     "WHERE berkas_id IS NULL AND dibuat < ?", (batas,)).fetchall()
+    if lama:
+        _hapus_baris(k, lama)
+    k.commit()
+    _hapus_file(lama)
+    return len(lama)

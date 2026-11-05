@@ -6,6 +6,7 @@
 import os
 import sys
 import unittest
+from unittest import mock
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -46,6 +47,40 @@ class UjiBaca(unittest.TestCase):
         with self.assertRaises(ocr.GalatBaca) as c:
             ocr.baca("tebal.pdf", pdf_teks(["halaman"] * 31))
         self.assertIn("30", str(c.exception))
+
+    def test_pdfium_selalu_di_bawah_kunci(self):
+        """PDFium tidak aman dipakai banyak utas sekaligus (dokumentasi pypdfium2),
+        sedangkan waitress melayani beberapa permintaan bersamaan."""
+        asli = ocr.pdfium.PdfDocument
+        terkunci = []
+
+        def buka(*a, **kw):
+            terkunci.append(ocr._KUNCI_PDF.locked() if hasattr(ocr._KUNCI_PDF, "locked")
+                            else ocr._KUNCI_PDF._is_owned())
+            return asli(*a, **kw)
+        with mock.patch.object(ocr.pdfium, "PdfDocument", side_effect=buka):
+            ocr.baca("a.pdf", pdf_teks(["KARTU KELUARGA No. 7503070101100002"]))
+            ocr.gambar("a.pdf", pdf_teks(["KARTU KELUARGA"]), 1)
+        self.assertEqual(terkunci, [True, True])
+
+    def test_satu_halaman_rusak_lainnya_tetap(self):
+        asli = ocr.pdfium.PdfPage.get_textpage
+        panggil = []
+
+        def teks(hal):
+            panggil.append(1)
+            if len(panggil) == 2:
+                raise ocr.pdfium.PdfiumError("halaman rusak")
+            return asli(hal)
+        with mock.patch.object(ocr.pdfium.PdfPage, "get_textpage", teks):
+            hal = ocr.baca("a.pdf", pdf_teks(["KARTU KELUARGA No. 7503070101100002"] * 3))
+        self.assertEqual([h.gagal for h in hal], [False, True, False])
+        self.assertIn("KARTU KELUARGA", hal[2].teks)
+
+    def test_skala_halaman_besar_dibatasi(self):
+        self.assertAlmostEqual(ocr._skala(595, 842), ocr.DPI_OCR / 72)
+        s = ocr._skala(14400, 14400)                     # halaman 200 x 200 inci
+        self.assertLessEqual((14400 * s) * (14400 * s), ocr.MAKS_PIKSEL * 1.001)
 
     def test_gambar_png(self):
         png = ocr.gambar("kk.pdf", pdf_teks(["KARTU KELUARGA"]), 1)
