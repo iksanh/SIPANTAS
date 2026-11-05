@@ -5,6 +5,7 @@
 """
 import io
 import os
+import re
 import shutil
 import sys
 import tempfile
@@ -151,6 +152,20 @@ class UjiTampilan(Dasarunggah):
         self.assertIn(f'data-berkas-id="{bid}"', h)
         self.assertNotIn('name="titipan"', h)
         self.assertNotIn('id="p-unggah"', h)
+
+    def test_unggah_juga_di_tab_berkas(self):
+        """Berkas yang sudah ada terbuka di tab Berkas; kartu yang hanya di tab
+        Dokumen terlewat oleh petugas."""
+        a = self.klien(masuk=True)
+        bid = self.buat_berkas(a)
+        h = a.get(f"/berkas/{bid}").get_data(as_text=True)
+        panel = lambda p: h[h.index(f'<div class="panel" id="{p}">'):]  # noqa: E731
+        berkas = panel("p-berkas")[:panel("p-berkas").index('<div class="panel" id="p-pihak">')]
+        self.assertIn("data-unggah", berkas)
+        self.assertIn("data-unggah", panel("p-dokumen"))
+        ids = re.findall(r'id="(f_unggah[^"]*)"', h)
+        self.assertEqual(len(ids), 2)
+        self.assertEqual(len(set(ids)), 2, "id medan file harus unik per kartu")
 
     def test_baca_saja_tanpa_unggah(self):
         pa, pb = self.petugas("tampil_a"), self.petugas("tampil_b")

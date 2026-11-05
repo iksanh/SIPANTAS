@@ -205,9 +205,9 @@ aplikasi diperbarui.
 
 ## Unggah dokumen: pilah, pastikan, isi otomatis
 
-Langkah pertama **Berkas baru**, dan kartu paling atas di tab **Dokumen** berkas
-yang sudah ada. Petugas mengunggah scan atau foto surat-surat pemohon sekaligus
-(PDF, JPG, PNG; boleh PDF gabungan, paling banyak 30 halaman dan 20 MB per
+Langkah pertama **Berkas baru**, dan kartu paling atas di tab **Berkas** serta tab
+**Dokumen** berkas yang sudah ada (hanya bagi yang boleh mengubah berkasnya).
+Petugas mengunggah scan atau foto surat-surat pemohon sekaligus (PDF, JPG, PNG; boleh PDF gabungan, paling banyak 30 halaman dan 20 MB per
 file), lalu:
 
 ```

@@ -813,14 +813,17 @@ def _isi_pihak(p=None):
             f'</div>')
 
 
-def _panel_unggah(d, baru):
+def _panel_unggah(d, baru, kunci="dokumen"):
     """Kartu Unggah dokumen (app.js: pasangUnggah). File dibaca di server
     (/unggah), dipilah, dipastikan jenisnya oleh petugas, lalu usulan isiannya
     diterapkan ke formulir ini. Medan file sengaja tanpa name: filenya sudah
     terkirim lewat /unggah, tidak ikut lagi saat Simpan.
 
     Berkas baru belum punya id, jadi unggahannya dititipkan dengan token yang
-    ikut terkirim saat Simpan (name="titipan") dan ditautkan di sana."""
+    ikut terkirim saat Simpan (name="titipan") dan ditautkan di sana.
+
+    Berkas yang sudah ada memasang kartu ini dua kali (tab Berkas dan tab
+    Dokumen); `kunci` membuat id medan filenya unik per kartu."""
     from .baca import ocr
     from .baca.jenis import DAFTAR, PILIHAN
     jenis = e(json.dumps({k: DAFTAR[k].label for k in PILIHAN}))
@@ -838,8 +841,8 @@ def _panel_unggah(d, baru):
 PDF gabungan (paling banyak 30 halaman, 20 MB per file). Dibaca di server kantor ini, tidak
 dikirim ke mana pun. Tidak ada isian yang tersimpan sebelum tombol Simpan.</p>
 <div class="grid g3" style="align-items:end">
-  <div style="grid-column:span 2"><label for="f_unggah_berkas">File</label>
-  <input type="file" id="f_unggah_berkas" multiple accept="image/jpeg,image/png,application/pdf"
+  <div style="grid-column:span 2"><label for="f_unggah_{e(kunci)}">File</label>
+  <input type="file" id="f_unggah_{e(kunci)}" multiple accept="image/jpeg,image/png,application/pdf"
    data-unggah-berkas></div>
   <div><button type="button" class="btn" data-unggah-baca>Baca &amp; pilah</button></div>
 </div>
@@ -1011,7 +1014,10 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
                    for r in ref["panitia"]]
 
     # ---- panel: berkas
-    p_berkas = _kartu_sinkron("berkas", boleh_ubah, k) + f"""<div class="kartu"><h2>Identitas berkas</h2><div class="badan">
+    # Berkas yang sudah ada terbuka di tab ini; kartu unggah yang hanya ada di
+    # tab Dokumen terlewat oleh petugas, jadi dipasang juga di sini.
+    unggah_berkas = "" if baru or not boleh_ubah else _panel_unggah(d, baru=False, kunci="tab_berkas")
+    p_berkas = unggah_berkas + _kartu_sinkron("berkas", boleh_ubah, k) + f"""<div class="kartu"><h2>Identitas berkas</h2><div class="badan">
 <div class="grid g3">
   {kotak("Jenis hak dimohon", "jenis_hak_dimohon", hak_pilihan, d["jenis_hak_dimohon"],
          petunjuk="menentukan template yang dipakai; isian khusus jenis hak "
