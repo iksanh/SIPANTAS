@@ -271,6 +271,36 @@ CREATE TABLE IF NOT EXISTS foto_lapang (
   urut INTEGER NOT NULL DEFAULT 0,
   nama_file TEXT NOT NULL, keterangan TEXT
 );
+-- ---------- unggah dokumen (berkas/unggah.py) ----------
+-- Satu baris per file. berkas_id NULL = titipan dari Berkas baru yang belum
+-- disimpan; ditautkan saat Simpan, dibuang setelah 7 hari bila tidak.
+CREATE TABLE IF NOT EXISTS unggahan (
+  id INTEGER PRIMARY KEY,
+  berkas_id INTEGER REFERENCES berkas(id) ON DELETE CASCADE,
+  titipan TEXT,
+  nama_asli TEXT NOT NULL,
+  nama_file TEXT NOT NULL,
+  sidik TEXT NOT NULL,
+  jml_halaman INTEGER NOT NULL,
+  pengguna_id INTEGER REFERENCES pengguna(id),
+  dibuat TEXT NOT NULL
+);
+-- Satu baris per dokumen hasil pilahan. jenis_tebakan vs jenis = catatan
+-- salah tebak, bahan pemilah berikutnya.
+CREATE TABLE IF NOT EXISTS unggahan_dokumen (
+  id INTEGER PRIMARY KEY,
+  unggahan_id INTEGER NOT NULL REFERENCES unggahan(id) ON DELETE CASCADE,
+  hal_awal INTEGER NOT NULL,
+  hal_akhir INTEGER NOT NULL,
+  jenis_tebakan TEXT NOT NULL,
+  yakin REAL NOT NULL,
+  jenis TEXT,
+  status TEXT NOT NULL DEFAULT 'baru',        -- baru | pasti | diabaikan | diterapkan
+  teks TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS ix_unggahan_berkas ON unggahan(berkas_id);
+CREATE INDEX IF NOT EXISTS ix_unggahan_titipan ON unggahan(titipan);
+CREATE INDEX IF NOT EXISTS ix_unggahan_dok ON unggahan_dokumen(unggahan_id);
 CREATE TABLE IF NOT EXISTS pendapat_anggota (
   id INTEGER PRIMARY KEY,
   berkas_id INTEGER NOT NULL REFERENCES berkas(id) ON DELETE CASCADE,

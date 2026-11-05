@@ -10,7 +10,7 @@ import urllib.parse as up
 
 from flask import Blueprint, g, jsonify, redirect, request
 
-from .. import aiw, formulir, izin, kabar, pbt, referensi, web
+from .. import aiw, formulir, izin, kabar, pbt, referensi, unggah, web
 from ..dokumen import foto, konteks, terbitkan
 from ..util import ke_int
 
@@ -128,6 +128,7 @@ def hapus(bid):
     """Hanya admin. Menghapus berkas ikut membuang foto lapangan dan seluruh
     barisnya di sebelas tabel — tidak ada tong sampah."""
     foto.hapus_semua(g.k, bid)
+    unggah.hapus_semua(g.k, bid)
     g.k.execute("DELETE FROM berkas WHERE id=?", (bid,))
     g.k.commit()
     return redirect("/berkas?pesan=dihapus", 303)

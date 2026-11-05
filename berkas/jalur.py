@@ -22,6 +22,7 @@ INDUK = os.path.dirname(AKAR)
 
 DATA = os.path.join(AKAR, "data")
 FOTO = os.path.join(DATA, "foto")
+UNGGAHAN = os.path.join(DATA, "unggahan")
 BASIS_DATA = os.path.join(DATA, "berkas.db")
 
 TEMPLATE = os.path.join(AKAR, "templates")
