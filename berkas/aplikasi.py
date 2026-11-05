@@ -18,7 +18,7 @@ from flask import Flask, Response, abort, g, redirect, request
 
 from . import db, izin, jalur, sesi, web
 from .rute import (auth, berkas, pengaturan, pradaftar, referensi, sinkron,
-                   template, unduhan)
+                   template, unduhan, unggah)
 
 # Endpoint yang boleh dibuka tanpa masuk.
 BEBAS = {"auth.halaman_masuk", "auth.masuk", "static"}
@@ -182,4 +182,5 @@ def buat_aplikasi():
     app.register_blueprint(pengaturan.bp)
     app.register_blueprint(unduhan.bp)
     app.register_blueprint(sinkron.bp)
+    app.register_blueprint(unggah.bp)
     return app

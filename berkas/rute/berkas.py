@@ -86,6 +86,8 @@ def urai_pbt():
 @bp.post("/berkas/baru")
 def buat():
     bid = formulir.simpan(g.k, request.form, None, g.pengguna["id"])
+    # Dokumen yang diunggah di langkah "Unggah dokumen" sebelum berkasnya ada.
+    unggah.tautkan(g.k, request.form.get("titipan"), bid, g.pengguna["id"])
     return redirect(_simpan_foto(bid, "dibuat"), 303)
 
 
