@@ -114,6 +114,13 @@ def catatan_koreksi(k):
     return {"baris": baris, "butir": butir}
 
 
+def daftar_desa_ocr(k):
+    """Desa + nama kecamatannya, bentuk yang dicari pbt.cocok_desa()."""
+    return [dict(r) for r in k.execute(
+        "SELECT d.id, d.kecamatan_id, d.nama, c.nama AS kecamatan FROM ref_desa d "
+        "JOIN ref_kecamatan c ON c.id=d.kecamatan_id")]
+
+
 def daftar_desa(k):
     """Semua desa beserta riwayat pejabatnya, dalam tiga kueri saja.
 

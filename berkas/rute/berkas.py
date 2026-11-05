@@ -79,10 +79,7 @@ def urai_pbt():
     teks = request.form.get("teks", "")
     if len(teks) > pbt.BATAS_TEKS:
         return jsonify({"galat": "Teksnya terlalu panjang untuk satu lembar PBT."}), 413
-    desa = [dict(r) for r in g.k.execute(
-        "SELECT d.id, d.kecamatan_id, d.nama, c.nama AS kecamatan FROM ref_desa d "
-        "JOIN ref_kecamatan c ON c.id=d.kecamatan_id")]
-    return jsonify(pbt.urai(teks, desa))
+    return jsonify(pbt.urai(teks, referensi.daftar_desa_ocr(g.k)))
 
 
 # ------------------------------------------------------------------- simpan
