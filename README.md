@@ -34,7 +34,7 @@ Lima menu, dan tiap halaman hanya menampilkan yang sedang dipakai:
 | **Pradaftar** | Satu tabel, disaring kotak cari dan tombol keadaan (Semua / Belum lengkap / Siap diterima / Diterima / Dikembalikan / Batal) yang berikut jumlahnya. Pemeriksaan kelengkapan berkas **sebelum** didaftar di loket. |
 | **Pradaftar baru** | Dituntun tiga langkah: Pemohon → Letak tanah → Kelengkapan berkas. Sesudah tersimpan, pradaftarnya terbuka sebagai empat tab. |
 | **Berkas** | Satu tabel berhalaman (10/25/50/100 per halaman), disaring kotak cari dan dropdown Jenis hak (HM, WAKAF, …), Status, Kegiatan, dan Kecamatan — tiap pilihan berikut jumlahnya. Saringan tersimpan di alamat (`/berkas?hak=WAKAF&hal=2`), jadi bisa ditandai atau dibagikan. |
-| **Berkas baru** | Dituntun enam langkah bernomor: Jenis permohonan → Pihak → Bidang tanah → Riwayat tanah → Dokumen → Foto lapangan. Tiga terakhir bertanda **boleh nanti** dan ada tombol **Lewati**. Simpan hanya ada satu, di ujung langkah terakhir. Sesudah tersimpan, berkasnya langsung terbuka sebagai delapan tab biasa. |
+| **Berkas baru** | Dituntun tujuh langkah bernomor: Unggah dokumen → Jenis permohonan → Pihak → Bidang tanah → Riwayat tanah → Dokumen → Foto lapangan. Langkah pertama dan tiga terakhir bertanda **boleh nanti** dan ada tombol **Lewati**. Simpan hanya ada satu, di ujung langkah terakhir. Sesudah tersimpan, berkasnya langsung terbuka sebagai delapan tab biasa. |
 | **Berkas yang dibuka** | Delapan tab. Judul, tombol Simpan, dan bilah tabnya menempel di atas, jadi tetap terjangkau sampai bawah. Tab **Cetak** memakai angka: merah kalau ada yang menghalangi pencetakan, kuning kalau cuma peringatan, centang hijau kalau bersih. |
 | **Data referensi** | Lima tab: **Jenis hak**, **Klausa**, **Kelengkapan** (daftar persyaratan yang dipakai Pradaftar), **Wilayah** (daftar induk Kemendagri, kecamatan, desa/kelurahan), **Panitia A** (satu kartu per SK). Di dalam tab Wilayah dan Panitia A isinya tetap kartu lipat — jumlah SK panitia bertambah terus, jadi tidak mungkin dijadikan tab sendiri-sendiri. |
 | **Template** | Lima tab: **Hak Milik & hak lain**, **Hak Wakaf**, **Hak Pakai**, **Cetakan loket**, dan **Penanda & cara pakai**. Tiap template satu kartu lipat. |
@@ -202,6 +202,47 @@ Sesudah terpasang ia jadi milik kantor: suntingan admin tidak akan tertimpa saat
 aplikasi diperbarui.
 
 ---
+
+## Unggah dokumen: pilah, pastikan, isi otomatis
+
+Langkah pertama **Berkas baru**, dan kartu paling atas di tab **Dokumen** berkas
+yang sudah ada. Petugas mengunggah scan atau foto surat-surat pemohon sekaligus
+(PDF, JPG, PNG; boleh PDF gabungan, paling banyak 30 halaman dan 20 MB per
+file), lalu:
+
+```
+1. Pilah     tiap halaman dibaca, jenisnya ditebak; halaman berurutan yang
+             sejenis jadi satu dokumen (kecuali KTP: tiap lembar sendiri)
+2. Pastikan  "Apakah ini KTP?"  Ya  /  Bukan -> pilih jenis yang benar, atau Abaikan
+3. Ekstrak   hanya dokumen yang jenisnya sudah dipastikan
+4. Validasi  tabel Isian | Terbaca | Isian sekarang -> Terapkan -> Simpan
+```
+
+| Jenis | Mengisi |
+|---|---|
+| KTP | Penerima hak, atau satu baris Pihak lain (dipilih petugas) |
+| Kartu Keluarga | Baris Dokumen tambahan "Kartu Keluarga Nomor …"; anggota yang tidak ada di daftar pihak diberi peringatan |
+| Surat Pernyataan Penguasaan Fisik | Slot dokumen baku SPPF, batas-batas, luas menurut surat |
+| AIW / APAIW, PBT | Pengurai yang sama dengan kartu *Isi dari dokumen* (`aiw.py`, `pbt.py`) |
+| Dokumen lain | Baris Dokumen tambahan dari judul dan nomor suratnya |
+
+- **Dibaca di server kantor**, tanpa internet dan tanpa layanan luar: PDF yang
+  punya lapisan teks dibaca langsung (pypdfium2), hasil scan dan foto dibaca
+  RapidOCR di CPU. Kira-kira beberapa detik per halaman scan.
+- **Tidak ada yang masuk ke data berkas sebelum Simpan.** Isian yang berbeda
+  dengan yang sudah diketik tidak dicentang otomatis dan diberi warna.
+- NIK dicocokkan dengan tanggal lahir dan jenis kelamin (digit ke-7 s.d. 12;
+  perempuan +40). Yang tidak cocok jadi peringatan, tidak memblokir.
+- File asli dan teks hasil bacanya disimpan (`data/unggahan/`, tabel
+  `unggahan` dan `unggahan_dokumen`). Unggahan dari Berkas baru yang tidak
+  jadi disimpan dibuang setelah 7 hari. Menghapus berkas ikut membuang filenya.
+- Tebakan sistem dan jenis yang dipastikan petugas sama-sama disimpan: selisih
+  keduanya adalah bahan untuk memperbaiki pemilah nanti.
+- Menambah jenis dokumen: pola pengenalnya di `berkas/baca/jenis/__init__.py`,
+  pengurainya di `berkas/baca/jenis/<kode>.py`, sambungannya di
+  `berkas/baca/ekstrak.py`.
+- Tulisan tangan belum terbaca andal; isian seperti itu dikosongkan dan diketik
+  petugas.
 
 ## Ambil data dari aplikasi PHPT (by NIB)
 
@@ -547,6 +588,8 @@ Dokumen sumbernya harus `.docx`; kalau masih `.doc`, buka di Word lalu simpan ul
 - `Flask` dan `waitress` — kerangka web dan server WSGI
 - `python-docx` dan `openpyxl` — perakit DOCX dan pembaca XLSX
 - `Pillow` (dianjurkan) — untuk memutar tegak dan memperkecil foto lapangan
+- `pypdfium2`, `rapidocr`, `onnxruntime` (opsional) — untuk Unggah dokumen; tanpa
+  ketiganya aplikasi tetap jalan, hanya kartu unggahnya yang meminta pemasangan
 
 Semuanya dipasang otomatis oleh `jalankan.bat`. Versinya dipatok di
 `requirements.txt`; untuk memasang sendiri:
