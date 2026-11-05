@@ -18,6 +18,15 @@ openpyxl==3.1.5
 # jadi terbatas dan orientasi EXIF dari kamera ponsel tidak diperbaiki.
 Pillow==12.2.0
 
+# Opsional: fitur Unggah dokumen (berkas/baca/). Tanpa ketiganya aplikasi tetap
+# jalan, hanya unggah dokumennya yang menampilkan pesan pemasangan.
+# pypdfium2 membaca lapisan teks PDF dan menggambar halamannya; rapidocr
+# (model PaddleOCR, dijalankan onnxruntime di CPU) membaca hasil scan dan foto.
+# Semuanya di komputer sendiri - tidak ada dokumen yang dikirim ke luar.
+pypdfium2==5.14.0
+rapidocr==3.10.0
+onnxruntime==1.31.1
+
 # Kerangka web: penjaluran, pembacaan formulir dan unggahan, serta kuki sesi.
 # Sesi, peran, dan token anti-CSRF diurus sendiri di berkas/ - semuanya
 # bersandar pada tabel `sesi`, bukan pada kuki bertanda tangan bawaan Flask,
