@@ -1662,7 +1662,38 @@
     return setelMedan(desa, desaId);
   }
 
-  var OLAH_OCR = { aiw: aiwPratinjau, pbt: pbtPratinjau };
+  /* ---- Riwayat: butir "-" di poin 3 -> baris Riwayat perolehan (diganti semua) ---- */
+  function riwayatPratinjau(h, k) {
+    var butir = h.riwayat || [];
+    var baris = butir.map(function (r, i) {
+      return '<tr><td><input type="checkbox" checked data-riwayat-pakai="' + i + '"></td>' +
+        '<td class="nomor">' + (i + 1) + "</td><td>" + escOcr(r) + "</td></tr>";
+    }).join("");
+    k.wadah.innerHTML = daftarIngat(h) + (baris ?
+      '<div class="tabel-bungkus"><table class="ocr-pratinjau"><thead><tr><th></th><th>No</th>' +
+      "<th>Riwayat terbaca</th></tr></thead><tbody>" + baris + "</tbody></table></div>" +
+      '<p class="petunjuk">Yang dicentang <b>mengganti semua</b> baris Riwayat perolehan sekarang.</p>' +
+      '<button type="button" class="btn utama kecil" data-ocr-terapkan>Terapkan ke formulir</button>' : "");
+    return function terapkan() {
+      var w = k.form.querySelector('[data-dinamis="riwayat"]');
+      var contoh = w && w.querySelector("template");
+      var pakai = butir.filter(function (r, i) {
+        var cek = k.wadah.querySelector('[data-riwayat-pakai="' + i + '"]');
+        return cek && cek.checked;
+      });
+      if (!contoh || !pakai.length) return "";
+      w.querySelectorAll(".baris").forEach(function (b) { b.remove(); });
+      pakai.forEach(function (r) {
+        w.appendChild(document.importNode(contoh.content, true));
+        var t = w.lastElementChild.querySelector('[name="riwayat_uraian"]');
+        if (t) { t.value = r; t.classList.add("tersinkron"); }
+      });
+      nomori(w);
+      return "<b>" + pakai.length + " baris riwayat diisi.</b> Periksa isinya, lalu tekan <b>Simpan</b>.";
+    };
+  }
+
+  var OLAH_OCR = { aiw: aiwPratinjau, pbt: pbtPratinjau, riwayat: riwayatPratinjau };
 
   function pasangOcr() {
     document.querySelectorAll("[data-ocr]").forEach(function (kartu) {
@@ -1732,6 +1763,22 @@
           .catch(function (ex) { pesan("galat", escOcr(ex.message || ex)); })
           .then(function () { tombol.disabled = false; tombol.classList.remove("sibuk"); });
       });
+
+      /* Kartu yang punya kotak tempel: tulisannya langsung diurai, tanpa OCR. */
+      var kotak = kartu.querySelector("[data-ocr-teks]");
+      var tombolTeks = kartu.querySelector("[data-ocr-baca-teks]");
+      if (kotak && tombolTeks) {
+        tombolTeks.addEventListener("click", function () {
+          var teks = kotak.value.trim();
+          if (!teks) { kotak.focus(); return; }
+          tombolTeks.disabled = true;
+          pesan("", "Mengurai tulisan…");
+          urai(teks)
+            .then(tampilkan)
+            .catch(function (ex) { pesan("galat", escOcr(ex.message || ex)); })
+            .then(function () { tombolTeks.disabled = false; });
+        });
+      }
     });
   }
 

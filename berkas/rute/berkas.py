@@ -10,7 +10,7 @@ import urllib.parse as up
 
 from flask import Blueprint, g, jsonify, redirect, request
 
-from .. import aiw, formulir, izin, kabar, pbt, referensi, unggah, web
+from .. import aiw, formulir, izin, kabar, pbt, referensi, riwayat_teks, unggah, web
 from ..dokumen import foto, konteks, terbitkan
 from ..util import ke_int
 
@@ -80,6 +80,17 @@ def urai_pbt():
     if len(teks) > pbt.BATAS_TEKS:
         return jsonify({"galat": "Teksnya terlalu panjang untuk satu lembar PBT."}), 413
     return jsonify(pbt.urai(teks, referensi.daftar_desa_ocr(g.k)))
+
+
+@bp.post("/berkas/riwayat/urai")
+def urai_riwayat():
+    """Tulisan berisi riwayat (ditempel, atau hasil OCR) -> baris Riwayat
+    perolehan di tab Riwayat / hak asal (riwayat_teks.py). Tidak menulis apa
+    pun ke basis data."""
+    teks = request.form.get("teks", "")
+    if len(teks) > riwayat_teks.BATAS_TEKS:
+        return jsonify({"galat": "Tulisannya terlalu panjang."}), 413
+    return jsonify(riwayat_teks.urai(teks))
 
 
 # ------------------------------------------------------------------- simpan

@@ -900,6 +900,25 @@ def _kartu_pbt():
         "luas, letak desa, batas-batas, dan penggunaan tanahnya dibaca otomatis.")
 
 
+def _kartu_riwayat_teks():
+    """Kartu "Baca riwayat dari tulisan" di tab Riwayat / hak asal. Selain unggah
+    dokumen (seperti AIW/PBT), tulisannya boleh langsung ditempel. Kotak tempelnya
+    sengaja tanpa name: tidak ikut terkirim saat Simpan."""
+    tempel = """<div style="margin-top:.75rem">
+  <label for="f_ocr_riwayat_teks">Tempel tulisan</label>
+  <textarea id="f_ocr_riwayat_teks" rows="6" data-ocr-teks
+    placeholder="3. Bahwa bidang tanah tersebut diperoleh dengan riwayat sebagai berikut:&#10;- Tahun 1975 dikuasai oleh …&#10;- Tahun 1990 dijual kepada …&#10;4. …"></textarea>
+  <button type="button" class="btn" data-ocr-baca-teks style="margin-top:.5rem">Baca tulisan</button>
+</div>"""
+    return _kartu_ocr(
+        "riwayat", "Baca riwayat dari tulisan",
+        "Riwayat diambil dari <b>poin 3</b> (berhenti sebelum poin 4); tiap butir yang "
+        "diawali tanda <b>-</b> menjadi satu baris Riwayat perolehan. Baris yang sudah ada "
+        "diganti setelah tombol Terapkan. Unggah foto/scan atau PDF suratnya, atau tempel "
+        "tulisannya di kotak bawah.",
+        tambahan=tempel)
+
+
 def _isi_foto(f):
     """Satu baris foto: gambar kecil + keterangan. Urutan baris = urutan di lampiran."""
     fid = e(f["id"])
@@ -1173,7 +1192,8 @@ def halaman_form(k, pengguna, d, ref, masalah=None, terbit=None, pesan=None,
 
     # ---- panel: asal tanah
     ha = d["hak_asal"]
-    p_asal = f"""<div class="kartu"><h2>Riwayat perolehan — untuk pemberian hak baru</h2>
+    p_asal = f"""{_kartu_riwayat_teks()}
+<div class="kartu"><h2>Riwayat perolehan — untuk pemberian hak baru</h2>
 <div class="badan">
 <div class="baris-dinamis" data-dinamis="riwayat">
   {''.join(_baris_dinamis("riwayat", i + 1, _isi_riwayat(r)) for i, r in enumerate(d["riwayat"]))}
